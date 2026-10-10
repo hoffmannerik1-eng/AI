@@ -1,0 +1,597 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a10">
+<title>VOID AI</title>
+<style>
+:root {
+  --bg:#090a10; --panel:#12141d; --panel2:#1b1e29;
+  --line:#2a2e3c; --text:#f5f6fc; --muted:#9ba4b7;
+  --red:#ff3558; --pink:#ff5a9b; --green:#4dffb5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 75% 0,#351323 0,transparent 38%),var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;height:100dvh;overflow:hidden}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:12px;padding:10px 13px;transition:.2s}
+button:hover{border-color:var(--red);transform:translateY(-1px)}
+button:disabled{opacity:.5;cursor:wait}
+input,textarea,select{background:#0d0f16;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px;width:100%;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--pink)}
+.app{display:grid;grid-template-columns:245px 1fr;height:100dvh}
+.sidebar{background:#0c0d13eF;border-right:1px solid var(--line);padding:17px 13px;display:flex;flex-direction:column;gap:15px}
+.brand{display:flex;align-items:center;gap:12px;padding:4px 5px 18px;border-bottom:1px solid var(--line)}
+.logo{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(135deg,var(--red),#882cff);font-weight:900;font-size:22px;box-shadow:0 0 28px #ff355833}
+.brand strong{letter-spacing:2px}.brand small{display:block;color:var(--muted);font-size:10px}
+.newchat{background:linear-gradient(120deg,var(--red),#a82b79);border:0;font-weight:800}
+.nav{display:grid;gap:6px}.nav button{text-align:left;background:transparent;border-color:transparent;color:#c9ceda}
+.nav button.active{background:#261923;border-color:#4c293b;color:white}
+.nav span{display:inline-block;width:28px;color:var(--pink)}
+.sidebarBottom{margin-top:auto;color:var(--muted);font-size:11px}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.topbar{height:65px;flex-shrink:0;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#0c0d13cc;gap:10px}
+.topbar small{display:block;color:var(--muted);font-size:11px}
+.topActions{display:flex;gap:7px}.icon{width:41px;height:41px;padding:0;font-size:18px}
+.view{display:none;flex:1;min-height:0;overflow:auto}.view.active{display:flex}
+.chatview{flex-direction:column;align-items:center;overflow:hidden}
+.messages{width:min(900px,100%);padding:25px 22px 12px;overflow-y:auto;flex:1;min-height:0;scroll-behavior:smooth}
+.welcome{max-width:680px;margin:8vh auto 24px;text-align:center;animation:rise .5s}
+.orb{width:80px;height:80px;margin:0 auto 24px;border-radius:50%;background:radial-gradient(circle at 30% 25%,#ffb1c3,var(--red) 40%,#46122e 78%);box-shadow:0 0 50px #ff355844;animation:float 4s ease-in-out infinite;position:relative}
+.orb:after{content:"";position:absolute;inset:-10px;border:1px solid #ff668655;border-radius:50%;animation:pulse 2.5s infinite}
+h1{font-size:clamp(29px,4vw,46px);letter-spacing:-1.5px;line-height:1.1;margin:0 0 14px}
+.gradient{background:linear-gradient(90deg,#fff,#ff7b9f);color:transparent;background-clip:text}
+.welcome p{color:var(--muted);max-width:520px;margin:0 auto 25px}
+.suggestions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;text-align:left}
+.suggestions button{text-align:left;background:#13151e;padding:14px;min-height:68px}
+.suggestions b{display:block;font-size:13px}.suggestions small{color:var(--muted);font-size:12px}
+.message{display:flex;gap:12px;margin:0 auto 23px;max-width:800px;animation:rise .2s}
+.avatar{width:35px;height:35px;flex:0 0 35px;border-radius:12px;display:grid;place-items:center;background:#30202b;border:1px solid #49303c;font-size:12px;font-weight:900}
+.message.user .avatar{background:#17332b;color:var(--green);border-color:#275849}
+.bubble{min-width:0;max-width:calc(100% - 45px);overflow-wrap:anywhere}
+.who{font-size:12px;font-weight:800;margin:0 0 6px}
+.content{white-space:pre-wrap;line-height:1.65;overflow-wrap:anywhere}
+.content pre{white-space:pre;overflow:auto;background:#080a10;padding:12px;border-radius:10px;border:1px solid var(--line)}
+.content img{max-width:100%;border-radius:12px}
+.content a{color:#82baff}
+.composerWrap{width:min(900px,100%);padding:10px 22px max(15px,env(safe-area-inset-bottom))}
+.composer{background:#151720;border:1px solid #353947;border-radius:18px;padding:10px}
+.composer:focus-within{border-color:#b63b58}
+.composer textarea{display:block;resize:none;min-height:54px;max-height:170px;border:0;background:transparent;padding:8px}
+.composebar{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.spacer{flex:1}
+.send{background:var(--red);border-color:var(--red);font-size:19px;font-weight:900;width:43px;height:43px;padding:0}
+.subtle{font-size:11px;color:var(--muted);text-align:center;margin-top:7px}
+.recording{background:#672333!important;border-color:var(--red)!important}
+.panelview{display:none;overflow:auto;padding:25px;width:100%}
+.panelview.active{display:block}
+.panelhead,.wide{max-width:950px;margin:0 auto 20px}
+.panelhead h2{margin:0;font-size:27px}.panelhead p,.muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;max-width:950px;margin:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:17px;min-width:0}
+.card h3{margin:0 0 12px;font-size:15px}
+.field{display:grid;gap:7px;margin:12px 0}
+.field label{font-size:12px;color:#cbd1de}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.primary{background:linear-gradient(120deg,var(--red),#a72c78);border:0;font-weight:800}
+.preview{min-height:300px;display:grid;place-items:center;background:#090b12;border:1px dashed #343947;border-radius:14px;overflow:hidden;padding:10px}
+.preview svg{width:100%;height:auto;max-height:600px}
+.status{font-size:12px;color:var(--green);min-height:20px;margin-top:8px}
+.note{font-size:12px;color:var(--muted);line-height:1.6}
+.toolgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;max-width:950px;margin:auto}
+.tool{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.tool h3{margin:0 0 6px}.tool p{font-size:13px;color:var(--muted)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #ff355820}50%{box-shadow:0 0 0 9px #ff355800}}
+@media(max-width:760px){
+ .app{grid-template-columns:1fr}.sidebar{display:none}
+ .topbar{height:57px;padding:0 11px}.messages{padding:17px 13px 8px}
+ .composerWrap{padding:8px 9px max(9px,env(safe-area-inset-bottom))}
+ .welcome{margin-top:5vh}.suggestions,.grid,.toolgrid{grid-template-columns:1fr}
+ .panelview{padding:17px 11px}.icon{width:37px;height:37px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="logo">V</div><div><strong>VOID AI</strong><small>PERSONAL AI WORKSPACE</small></div></div>
+  <button class="newchat" id="newChat">＋ Neuer Chat</button>
+  <div class="nav">
+    <button class="active" data-view="chat"><span>◉</span> KI-Chat</button>
+    <button data-view="studio"><span>✦</span> Image Studio</button>
+    <button data-view="cowork"><span>⌘</span> Cowork / Tools</button>
+    <button data-view="settings"><span>⚙</span> Einstellungen</button>
+  </div>
+  <div class="sidebarBottom">GitHub Pages · PC + iPad<br>Lokaler Verlauf im Browser</div>
+</aside>
+
+<main class="main">
+<header class="topbar">
+  <div><strong id="pageTitle">KI-Chat</strong><small id="modelLabel">Noch kein KI-Endpunkt verbunden</small></div>
+  <div class="topActions">
+    <button class="icon" id="talk" title="Talk to talk">🎙</button>
+    <button class="icon" id="export" title="Chat exportieren">⇩</button>
+  </div>
+</header>
+
+<section class="view chatview active" id="view-chat">
+  <div class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <div class="orb"></div>
+      <h1>Was bauen wir <span class="gradient">heute?</span></h1>
+      <p>Chatte mit deiner KI, sprich mit ihr, lade Bilder hoch oder erstelle animierte Grafiken.</p>
+      <div class="suggestions">
+        <button data-prompt="Hilf mir, einen KI-Agenten für meinen PC zu bauen. Erkläre die nötigen Schritte und schreibe vollständigen Code."><b>⌘ PC-Agent bauen</b><small>Planen, programmieren, verbessern</small></button>
+        <button data-prompt="Erstelle eine vollständige responsive Website als einzelne index.html."><b>⌘ Website erstellen</b><small>HTML, CSS und JavaScript</small></button>
+        <button data-prompt="Erkläre mir, wie ich ein lokales KI-Modell mit Ollama betreibe."><b>◉ Lokale KI</b><small>Ohne Gemini-API-Key</small></button>
+        <button data-prompt="Gib mir eine kreative Idee für eine futuristische animierte Grafik."><b>✦ Kreativ werden</b><small>Grafiken, Ideen und Animationen</small></button>
+      </div>
+    </div>
+  </div>
+  <div class="composerWrap">
+    <div class="composer">
+      <textarea id="prompt" rows="2" placeholder="Schreib eine Nachricht … (Strg/⌘ + Enter zum Senden)"></textarea>
+      <div class="composebar">
+        <button id="attach">＋ Bild</button>
+        <input type="file" id="imageInput" accept="image/*" hidden>
+        <span class="muted" id="attachmentLabel"></span>
+        <span class="spacer"></span>
+        <button id="mic" title="Spracheingabe">🎙</button>
+        <button id="send" class="send" title="Senden">↑</button>
+      </div>
+    </div>
+    <div class="subtle">Antworten können Fehler enthalten. Teile keine Passwörter oder privaten API-Schlüssel.</div>
+  </div>
+</section>
+
+<section class="view panelview" id="view-studio">
+  <div class="panelhead"><h2>✦ Image Studio</h2><p>Erstelle animierte SVG-Grafiken direkt im Browser.</p></div>
+  <div class="grid">
+    <div class="card">
+      <h3>Deine Bildidee</h3>
+      <div class="field"><label>Motiv / Beschreibung</label><textarea id="artPrompt" rows="4" placeholder="Ein futuristischer roter Sportwagen in einer Neon-Stadt bei Nacht"></textarea></div>
+      <div class="field"><label>Stil</label><select id="artStyle"><option value="neon">Neon / Cyberpunk</option><option value="space">Kosmos</option><option value="minimal">Minimalistisch</option><option value="sunset">Sonnenuntergang</option></select></div>
+      <div class="field"><label>Animation</label><select id="artMotion"><option value="pulse">Pulsieren</option><option value="float">Schweben</option><option value="spin">Rotieren</option><option value="none">Keine</option></select></div>
+      <div class="row"><button class="primary" id="makeArt">Grafik erstellen</button><button id="saveArt">SVG speichern</button></div>
+      <div class="status" id="artStatus"></div>
+      <p class="note">Der Generator erstellt SVG-Grafiken ohne API-Key. Für fotorealistische Bilder ist ein zusätzlicher Bildgenerierungsdienst erforderlich.</p>
+    </div>
+    <div class="preview" id="artPreview"><span class="muted">Deine Grafik erscheint hier</span></div>
+  </div>
+</section>
+
+<section class="view panelview" id="view-cowork">
+  <div class="panelhead"><h2>⌘ Cowork / Tools</h2><p>Browserwerkzeuge und Dateiexport für deine Projekte.</p></div>
+  <div class="toolgrid">
+    <div class="tool"><h3>🌐 Websuche</h3><p>Öffnet Suchergebnisse in einem neuen Tab.</p><div class="field"><input id="searchQuery" placeholder="Was soll gesucht werden?"></div><button class="primary" id="searchWeb">Suche öffnen</button></div>
+    <div class="tool"><h3>📝 Datei erstellen</h3><p>Speichere Code, Notizen oder Text als Datei.</p><div class="field"><input id="fileName" value="projekt.html"></div><div class="field"><textarea id="fileContent" rows="5" placeholder="Code oder Text einfügen"></textarea></div><button id="downloadFile">Datei herunterladen</button></div>
+    <div class="tool"><h3>🗣 Talk to talk</h3><p>Spracheingabe und Sprachausgabe verwenden Browserfunktionen, sofern verfügbar.</p><button id="testVoice">Stimme testen</button> <button id="toggleRead">Vorlesen: EIN</button></div>
+    <div class="tool"><h3>🖥 PC-Steuerung</h3><p>Eine Website kann nicht automatisch andere Apps auf deinem PC oder iPad bedienen. Dafür brauchst du einen separat installierten lokalen Agenten.</p><button class="primary" data-goto="settings">KI-Verbindung einrichten</button></div>
+  </div>
+</section>
+
+<section class="view panelview" id="view-settings">
+  <div class="panelhead"><h2>⚙ Verbindung</h2><p>Verbinde einen erreichbaren OpenAI-kompatiblen Chat-Endpunkt.</p></div>
+  <div class="grid">
+    <div class="card">
+      <h3>KI-Einstellungen</h3>
+      <div class="field"><label>API-Endpunkt</label><input id="endpoint" placeholder="https://server.example/v1/chat/completions"></div>
+      <div class="field"><label>Modellname</label><input id="model" placeholder="Modellname"></div>
+      <div class="field"><label>API-Key (nur Sitzung)</label><input id="apiKey" type="password" autocomplete="off" placeholder="Optional"></div>
+      <div class="row"><button class="primary" id="saveSettings">Speichern</button><button id="testConnection">Verbindung testen</button></div>
+      <div class="status" id="settingsStatus"></div>
+      <p class="note">Die Website selbst braucht keinen Schlüssel. API-Keys, die im Browser eingegeben werden, sind aber nicht geheim. Für eine öffentliche Website ist ein geschütztes Backend besser.</p>
+    </div>
+    <div class="card">
+      <h3>Lokales Modell auf dem PC</h3>
+      <p class="note">Ollama kann lokal laufen. GitHub Pages kann nicht automatisch darauf zugreifen. Für dein iPad muss der PC-Endpunkt im WLAN erreichbar und für die Website freigegeben sein. Öffne keinen lokalen KI-Server ungeschützt im Internet.</p>
+      <div class="field"><button id="clearHistory">Chatverlauf löschen</button></div>
+      <p class="note">Der Verlauf wird in diesem Browser gespeichert. Er synchronisiert sich nicht automatisch zwischen iPad und PC.</p>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const SETTINGS_KEY = "void-ai-settings-v1";
+const HISTORY_KEY = "void-ai-history-v1";
+const state = {
+  view:"chat", busy:false, endpoint:"", model:"", apiKey:"",
+  history:[], image:null, speaking:true, recognition:null, lastSvg:""
+};
+const titles = {
+  chat:"KI-Chat", studio:"Image Studio",
+  cowork:"Cowork / Tools", settings:"Einstellungen"
+};
+
+function switchView(name) {
+  state.view = name;
+  document.querySelectorAll(".view").forEach(v =>
+    v.classList.toggle("active", v.id === "view-" + name));
+  document.querySelectorAll("[data-view]").forEach(b =>
+    b.classList.toggle("active", b.dataset.view === name));
+  $("pageTitle").textContent = titles[name] || name;
+}
+document.querySelectorAll("[data-view]").forEach(b =>
+  b.addEventListener("click", () => switchView(b.dataset.view)));
+document.querySelectorAll("[data-goto]").forEach(b =>
+  b.addEventListener("click", () => switchView(b.dataset.goto)));
+
+function setStatus(text) {
+  $("modelLabel").textContent = text;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[c]));
+}
+function saveHistory() {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history.slice(-80))); }
+  catch(e) { console.warn("Verlauf konnte nicht gespeichert werden.", e); }
+}
+function remember(role, content) {
+  state.history.push({role, content});
+  state.history = state.history.slice(-80);
+  saveHistory();
+}
+function addMessage(role, text, image = null) {
+  $("welcome")?.remove();
+  const row = document.createElement("div");
+  row.className = "message " + (role === "user" ? "user" : "assistant");
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  avatar.textContent = role === "user" ? "DU" : "V";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  const who = document.createElement("div");
+  who.className = "who";
+  who.textContent = role === "user" ? "Du" : "VOID AI";
+  const content = document.createElement("div");
+  content.className = "content";
+  content.textContent = text;
+  if (image) {
+    const img = document.createElement("img");
+    img.src = image;
+    img.alt = "Angehängtes Bild";
+    img.style.display = "block";
+    img.style.marginTop = "10px";
+    content.appendChild(img);
+  }
+  bubble.append(who, content);
+  row.append(avatar, bubble);
+  $("messages").appendChild(row);
+  $("messages").scrollTop = $("messages").scrollHeight;
+  return content;
+}
+function showTyping() {
+  const el = addMessage("assistant", "KI denkt …");
+  return el;
+}
+function restoreHistory() {
+  for (const m of state.history) {
+    if (m.role === "user" || m.role === "assistant") addMessage(m.role, m.content);
+  }
+}
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    state.endpoint = s.endpoint || "";
+    state.model = s.model || "";
+  } catch {}
+  try {
+    state.history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  } catch {}
+  $("endpoint").value = state.endpoint;
+  $("model").value = state.model;
+  setStatus(state.model || "Noch kein KI-Endpunkt verbunden");
+}
+
+async function askModel(text, imageData) {
+  if (!state.endpoint) {
+    throw new Error("Noch kein KI-Endpunkt konfiguriert. Öffne Einstellungen und verbinde ein Modell.");
+  }
+  const messages = [{
+    role:"system",
+    content:"Du bist VOID AI, ein hilfreicher deutschsprachiger Assistent. Antworte direkt. Schreibe bei Code vollständige, brauchbare Beispiele. Behaupte niemals, du hättest Dateien, Apps oder Geräte bedient, wenn du das nicht tatsächlich getan hast. Du kannst keine anderen Apps direkt kontrollieren."
+  }];
+  for (const m of state.history.slice(-24)) {
+    if (m.role === "user" || m.role === "assistant") {
+      messages.push({role:m.role, content:m.content});
+    }
+  }
+  let content = text;
+  if (imageData) {
+    content = [
+      {type:"text", text:text || "Beschreibe das angehängte Bild."},
+      {type:"image_url", image_url:{url:imageData}}
+    ];
+  }
+  messages.push({role:"user", content});
+  const headers = {"Content-Type":"application/json"};
+  if (state.apiKey) headers.Authorization = "Bearer " + state.apiKey;
+
+  const response = await fetch(state.endpoint, {
+    method:"POST",
+    headers,
+    body:JSON.stringify({
+      model:state.model || "default",
+      messages,
+      stream:false
+    })
+  });
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status +
+      ". Prüfe Endpunkt, Modell, Berechtigung und CORS.");
+  }
+  const data = await response.json();
+  const answer = data.choices?.[0]?.message?.content ??
+                 data.message?.content;
+  if (typeof answer === "string") return answer;
+  if (Array.isArray(answer)) {
+    return answer.map(x => x.text || "").join("\n");
+  }
+  throw new Error("Der Server hat keine lesbare Chat-Antwort geliefert.");
+}
+
+async function sendMessage() {
+  if (state.busy) return;
+  const text = $("prompt").value.trim();
+  if (!text && !state.image) return;
+  state.busy = true;
+  $("send").disabled = true;
+  const image = state.image;
+  const display = text || "Bitte analysiere das angehängte Bild.";
+  addMessage("user", display, image);
+  remember("user", display);
+  $("prompt").value = "";
+  $("attachmentLabel").textContent = "";
+  state.image = null;
+  const typing = showTyping();
+  try {
+    const answer = await askModel(display, image);
+    typing.textContent = answer;
+    remember("assistant", answer);
+    if (state.speaking) speak(answer);
+    setStatus(state.model || "Modell verbunden");
+  } catch(e) {
+    typing.textContent =
+      "Verbindungsfehler: " + e.message +
+      "\n\nTipp: Prüfe die Verbindung. Bei einem eigenen Server muss CORS für deine GitHub-Pages-Adresse erlaubt sein.";
+    setStatus("Verbindung prüfen");
+  } finally {
+    state.busy = false;
+    $("send").disabled = false;
+    $("prompt").focus();
+  }
+}
+$("send").addEventListener("click", sendMessage);
+$("prompt").addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+document.querySelectorAll("[data-prompt]").forEach(b => {
+  b.addEventListener("click", () => {
+    $("prompt").value = b.dataset.prompt;
+    switchView("chat");
+    sendMessage();
+  });
+});
+$("newChat").addEventListener("click", () => {
+  state.history = [];
+  saveHistory();
+  $("messages").innerHTML =
+    '<div class="welcome" id="welcome"><div class="orb"></div>' +
+    '<h1>Was bauen wir <span class="gradient">heute?</span></h1>' +
+    '<p>Ein neuer Chat. Was hast du vor?</p></div>';
+  switchView("chat");
+});
+$("attach").addEventListener("click", () => $("imageInput").click());
+$("imageInput").addEventListener("change", e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) return;
+  if (file.size > 8 * 1024 * 1024) {
+    alert("Bitte wähle ein Bild unter 8 MB.");
+    e.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.image = reader.result;
+    $("attachmentLabel").textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+});
+
+$("saveSettings").addEventListener("click", () => {
+  state.endpoint = $("endpoint").value.trim();
+  state.model = $("model").value.trim();
+  state.apiKey = $("apiKey").value.trim();
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+    endpoint:state.endpoint, model:state.model
+  }));
+  setStatus(state.model || "Endpunkt eingetragen");
+  $("settingsStatus").textContent =
+    "Einstellungen gespeichert. Der API-Key bleibt nur im Arbeitsspeicher dieser Sitzung.";
+});
+$("testConnection").addEventListener("click", async () => {
+  state.endpoint = $("endpoint").value.trim();
+  state.model = $("model").value.trim();
+  state.apiKey = $("apiKey").value.trim();
+  $("settingsStatus").textContent = "Teste Verbindung …";
+  try {
+    const answer = await askModel("Antworte nur mit: Verbindung funktioniert.");
+    $("settingsStatus").textContent = "Erfolg: " + answer.slice(0, 180);
+    setStatus("Verbindung funktioniert");
+  } catch(e) {
+    $("settingsStatus").textContent = "Fehler: " + e.message;
+  }
+});
+$("clearHistory").addEventListener("click", () => {
+  if (!confirm("Den Chatverlauf dieses Browsers löschen?")) return;
+  state.history = [];
+  saveHistory();
+  $("messages").innerHTML =
+    '<div class="welcome" id="welcome"><div class="orb"></div>' +
+    '<h1>Was bauen wir <span class="gradient">heute?</span></h1></div>';
+});
+$("export").addEventListener("click", () => {
+  downloadBlob("void-ai-chat.txt",
+    state.history.map(m => (m.role === "user" ? "DU" : "VOID AI") +
+    ":\n" + m.content).join("\n\n"),
+    "text/plain;charset=utf-8");
+});
+function downloadBlob(name, content, type) {
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+$("downloadFile").addEventListener("click", () => {
+  const name = ($("fileName").value || "projekt.txt").replace(/[\\/:*?"<>|]/g, "_");
+  downloadBlob(name, $("fileContent").value, "text/plain;charset=utf-8");
+});
+$("searchWeb").addEventListener("click", () => {
+  const q = $("searchQuery").value.trim();
+  if (q) window.open("https://www.google.com/search?q=" +
+    encodeURIComponent(q), "_blank", "noopener");
+});
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) {
+    setStatus("Sprachausgabe nicht unterstützt");
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text.slice(0, 4500));
+  utterance.lang = "de-DE";
+  utterance.rate = 1;
+  const voices = window.speechSynthesis.getVoices();
+  utterance.voice = voices.find(v => v.lang.startsWith("de")) || null;
+  window.speechSynthesis.speak(utterance);
+}
+$("testVoice").addEventListener("click", () =>
+  speak("Hallo! Ich bin VOID AI. Die Sprachausgabe ist bereit."));
+$("toggleRead").addEventListener("click", () => {
+  state.speaking = !state.speaking;
+  $("toggleRead").textContent = state.speaking ? "Vorlesen: EIN" : "Vorlesen: AUS";
+});
+
+function toggleMic() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    alert("Dieser Browser unterstützt keine passende Spracheingabe. Prüfe Browser und Mikrofonberechtigung.");
+    return;
+  }
+  if (state.recognition) {
+    state.recognition.stop();
+    return;
+  }
+  const rec = new Recognition();
+  state.recognition = rec;
+  rec.lang = "de-DE";
+  rec.interimResults = true;
+  rec.continuous = false;
+  let finalText = "";
+  $("mic").classList.add("recording");
+  $("talk").classList.add("recording");
+  setStatus("Höre zu …");
+  rec.onresult = e => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    $("prompt").value = (finalText + " " + interim).trim();
+  };
+  rec.onerror = e => setStatus("Mikrofon: " + e.error);
+  rec.onend = () => {
+    state.recognition = null;
+    $("mic").classList.remove("recording");
+    $("talk").classList.remove("recording");
+    if ($("prompt").value.trim()) sendMessage();
+  };
+  rec.start();
+}
+$("mic").addEventListener("click", toggleMic);
+$("talk").addEventListener("click", toggleMic);
+
+function createSvg(prompt, style, motion) {
+  const palettes = {
+    neon:["#070914","#ff245b","#7b35ff","#49f5ff"],
+    space:["#030511","#7a4dff","#ff59b6","#8ae5ff"],
+    minimal:["#10131a","#f3f4f6","#aeb9cb","#ff526b"],
+    sunset:["#291338","#ff6a59","#ffb64b","#6d55f6"]
+  };
+  const p = palettes[style] || palettes.neon;
+  let stars = "";
+  for (let i = 0; i < 60; i++) {
+    const x = (i * 83 + 37) % 900;
+    const y = (i * 47 + 61) % 600;
+    stars += '<circle cx="' + x + '" cy="' + y +
+      '" r="' + (i % 3 + 1) + '" fill="' + p[3] +
+      '" opacity="' + (((i % 7) + 1) / 12) + '"/>';
+  }
+  let animation = "";
+  if (motion === "spin") animation = "animation:spin 24s linear infinite;";
+  if (motion === "float") animation = "animation:float 5s ease-in-out infinite;";
+  if (motion === "pulse") animation = "animation:pulse 3s ease-in-out infinite;";
+  const label = escapeHtml(prompt || "VOID AI").slice(0, 70);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${p[0]}"/><stop offset="1" stop-color="${p[2]}"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="${p[1]}" stop-opacity=".9"/><stop offset="1" stop-color="${p[1]}" stop-opacity="0"/></radialGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="35"/></filter>
+    <style>
+      @keyframes pulse{0%,100%{transform:scale(.97);opacity:.75}50%{transform:scale(1.04);opacity:1}}
+      @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      .subject{transform-origin:450px 270px;${animation}}
+    </style>
+  </defs>
+  <rect width="900" height="600" rx="24" fill="url(#bg)"/>
+  <ellipse cx="450" cy="290" rx="300" ry="240" fill="url(#glow)" filter="url(#blur)"/>
+  ${stars}
+  <g class="subject">
+    <circle cx="450" cy="270" r="145" fill="none" stroke="${p[3]}" stroke-width="2" opacity=".7"/>
+    <circle cx="450" cy="270" r="112" fill="none" stroke="${p[1]}" stroke-width="1.5" stroke-dasharray="8 12"/>
+    <path d="M450 130 L510 240 L450 365 L390 240 Z" fill="${p[1]}" fill-opacity=".26" stroke="${p[3]}" stroke-width="2"/>
+    <circle cx="450" cy="270" r="55" fill="url(#glow)"/>
+    <circle cx="450" cy="270" r="34" fill="${p[2]}" fill-opacity=".6" stroke="${p[3]}" stroke-width="2"/>
+    <path d="M300 270 H385 M515 270 H600 M450 120 V190 M450 350 V420" stroke="${p[3]}" stroke-width="2" opacity=".7"/>
+  </g>
+  <text x="48" y="510" fill="#fff" font-size="17" font-family="system-ui" opacity=".7">VOID / GENERATIVE VISUAL</text>
+  <text x="48" y="552" fill="#fff" font-size="26" font-weight="700" font-family="system-ui">${label}</text>
+  <text x="850" y="552" fill="${p[3]}" text-anchor="end" font-size="12" font-family="system-ui">AI STUDIO</text>
+  </svg>`;
+}
+$("makeArt").addEventListener("click", () => {
+  state.lastSvg = createSvg($("artPrompt").value, $("artStyle").value, $("artMotion").value);
+  $("artPreview").innerHTML = state.lastSvg;
+  $("artStatus").textContent = "SVG erstellt. Du kannst sie jetzt speichern.";
+});
+$("saveArt").addEventListener("click", () => {
+  if (!state.lastSvg) $("makeArt").click();
+  if (state.lastSvg) downloadBlob("void-ai-art.svg", state.lastSvg, "image/svg+xml;charset=utf-8");
+});
+
+loadSettings();
+restoreHistory();
+})();
+</script>
+</body>
+</html>
