@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI ERIK AUTOPILOT</title>
+<style>
+:root{color-scheme:dark;--green:#45ff9a;--bg:#070b10;--panel:#101820;--muted:#91a0ad}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#10251e 0,#070b10 55%);color:#effff6;font:15px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;min-height:100vh}
+main{max-width:1050px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{font-size:13px;letter-spacing:3px;color:var(--green);font-weight:800}.status{border:1px solid #28553e;border-radius:30px;padding:9px 13px;color:var(--green);font-size:12px}
+h1{font-size:clamp(32px,7vw,58px);margin:45px 0 8px;letter-spacing:-2px}h1 span{color:var(--green)}p{color:var(--muted);line-height:1.6}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:28px 0}.card{background:linear-gradient(145deg,#14211d,#0d141b);border:1px solid #20352c;border-radius:18px;padding:20px}.big{font-size:30px;font-weight:800;color:var(--green)}.small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin:22px 0}.btn{display:inline-block;padding:15px 19px;border-radius:12px;text-decoration:none;font-weight:800;background:var(--green);color:#07120c}.btn.secondary{background:#17232a;color:#eafff2;border:1px solid #31443b}
+.panel{background:#0d141b;border:1px solid #22312d;border-radius:18px;padding:20px;margin-top:16px}.steps{display:grid;gap:12px}.step{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #1d2925;padding:10px 0}.step:last-child{border:0}.tag{color:var(--green);font-size:12px}
+footer{color:#73847b;font-size:12px;margin:30px 0}
+@media(max-width:560px){main{padding:18px}.grid{grid-template-columns:1fr}.actions .btn{width:100%;text-align:center}}
+</style>
+</head>
+<body><main>
+<div class="top"><div class="logo">AI ERIK / AUTONOMOUS MEDIA LAB</div><div class="status">● CLOUD AUTOPILOT</div></div>
+<h1>YOUTUBE<br><span>AUTOPILOT</span></h1>
+<p>Trend erkennen. Eigenes Short produzieren. Qualität prüfen. Automatisch veröffentlichen – sobald die Cloud-Verbindung eingerichtet ist.</p>
+<div class="grid">
+<div class="card"><div class="small">Tageslimit</div><div class="big">1 Short</div><p>Konservativer Startwert – später anpassbar.</p></div>
+<div class="card"><div class="small">Betrieb</div><div class="big">CLOUD</div><p>GitHub Actions führt geplante Läufe aus.</p></div>
+</div>
+<div class="actions">
+<a class="btn" href="https://github.com/hoffmannerik1-eng/AI/actions/workflows/ai-erik-autopilot.yml">AUTOPILOT STEUERN ↗</a>
+<a class="btn secondary" href="https://github.com/hoffmannerik1-eng/AI/settings/secrets/actions">API-SECRETS EINRICHTEN ↗</a>
+</div>
+<section class="panel"><h2>Produktionspipeline</h2><div class="steps">
+<div class="step"><span>01 · Trends aus Deutschland suchen</span><span class="tag">RSS</span></div>
+<div class="step"><span>02 · Eigenes Skript erstellen</span><span class="tag">GEMINI</span></div>
+<div class="step"><span>03 · Vertikales Video + Stimme</span><span class="tag">VIDEO</span></div>
+<div class="step"><span>04 · Video prüfen</span><span class="tag">CHECK</span></div>
+<div class="step"><span>05 · YouTube Upload</span><span class="tag">OAUTH</span></div>
+</div></section>
+<section class="panel"><h2>Einrichtung</h2><p>Lege die vier benötigten GitHub Actions Secrets im Repository an. Bis die OAuth-Verbindung eingerichtet ist, stoppt der Upload sicher und das Video wird als Workflow-Artefakt gespeichert.</p></section>
+<footer>AI ERIK AUTOPILOT · Erstellt für die Steuerung per iPad · Zugangsdaten niemals in den Quellcode schreiben.</footer>
+</main></body></html>
