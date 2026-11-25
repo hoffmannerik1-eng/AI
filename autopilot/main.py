@@ -1,0 +1,172 @@
+import os, re, json, random, asyncio, subprocess, textwrap
+from datetime import datetime, timezone
+from pathlib import Path
+import feedparser
+import google.generativeai as genai
+import edge_tts
+from PIL import Image, ImageDraw, ImageFont
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+
+ROOT = Path(__file__).parent
+OUT = ROOT / "output"
+OUT.mkdir(exist_ok=True)
+GEMINI_KEY = os.environ["GEMINI_API_KEY"]
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MAX_DAILY = int(os.getenv("MAX_DAILY_VIDEOS", "1"))
+PRIVACY = os.getenv("YOUTUBE_PRIVACY_STATUS", "private").lower()
+genai.configure(api_key=GEMINI_KEY)
+
+def log(msg):
+    print(f"[{datetime.now(timezone.utc).isoformat()}] {msg}", flush=True)
+
+def get_trends():
+    feeds = [
+        "https://trends.google.com/trending/rss?geo=DE",
+        "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de"
+    ]
+    found = []
+    for url in feeds:
+        try:
+            feed = feedparser.parse(url)
+            for item in feed.entries[:12]:
+                title = re.sub(r"\s+", " ", item.get("title", "")).strip()
+                if title and title not in found:
+                    found.append(title)
+        except Exception as exc:
+            log(f"Feed konnte nicht geladen werden: {exc}")
+    if not found:
+        raise RuntimeError("Keine Trendthemen erreichbar. Abbruch statt erfundene Trends.")
+    return found[:20]
+
+def generate_content(trends):
+    prompt = f"""
+Du bist Redakteur für einen deutschsprachigen YouTube-Shorts-Kanal.
+Wähle EIN Thema aus dieser aktuellen Themenliste und erstelle ein originelles,
+sachliches und jugendgeeignetes Short. Keine Gerüchte, keine unbelegten Behauptungen,
+keine gefährlichen Challenges, keine medizinischen oder politischen Falschinformationen.
+Erfinde keine aktuellen Fakten. Wenn ein Thema nicht zuverlässig erklärbar ist,
+wähle ein anderes.
+Trendthemen:
+{json.dumps(trends, ensure_ascii=False)}
+Antworte ausschließlich als JSON mit:
+title (max 70 Zeichen), description (kurz, mit Hinweis auf KI-Visualisierung),
+script (deutscher Sprechertext, 75 bis 105 Wörter),
+scenes (genau 5 kurze Szenentexte, je max 8 Wörter),
+hashtags (Array mit 3 bis 5 passenden Hashtags).
+"""
+    model = genai.GenerativeModel(MODEL_NAME)
+    response = model.generate_content(prompt)
+    raw = response.text.strip()
+    raw = re.sub(r"^\x60{3}(?:json)?\s*|\s*\x60{3}$", "", raw, flags=re.I)
+    data = json.loads(raw)
+    if not all(k in data for k in ("title", "description", "script", "scenes", "hashtags")):
+        raise ValueError("KI-Antwort unvollständig")
+    if len(data["scenes"]) != 5 or not (45 <= len(data["script"].split()) <= 140):
+        raise ValueError("Skript besteht Qualitätsprüfung nicht")
+    return data
+
+def font(size, bold=False):
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/Library/Fonts/Arial.ttf"
+    ]
+    for p in candidates:
+        if Path(p).exists():
+            return ImageFont.truetype(p, size)
+    return ImageFont.load_default()
+
+def render_frames(data):
+    frames = []
+    w, h = 720, 1280
+    for i, scene in enumerate(data["scenes"]):
+        img = Image.new("RGB", (w, h), (8, 12, 18))
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((36, 45, w-36, h-45), radius=32, outline=(55, 255, 150), width=4)
+        d.text((65, 95), "AI ERIK • SHORTS", font=font(28, True), fill=(55,255,150))
+        d.text((65, 190), f"{i+1:02d} / 05", font=font(24), fill=(175,190,205))
+        lines = textwrap.wrap(scene, width=19)
+        y = 480 - len(lines)*55
+        for line in lines:
+            box = d.textbbox((0,0), line, font=font(48, True))
+            x = (w - (box[2]-box[0]))//2
+            d.text((x,y), line, font=font(48, True), fill="white")
+            y += 78
+        d.text((65, 1120), "Folge für mehr Wissen", font=font(25), fill=(55,255,150))
+        p = OUT / f"frame_{i:02d}.png"
+        img.save(p)
+        frames.append(p)
+    return frames
+
+async def make_voice(text, path):
+    communicate = edge_tts.Communicate(text, "de-DE-ConradNeural", rate="+0%")
+    await communicate.save(str(path))
+
+def make_video(data):
+    frames = render_frames(data)
+    audio = OUT / "voice.mp3"
+    asyncio.run(make_voice(data["script"], audio))
+    video = OUT / "short.mp4"
+    # A simple 5-scene vertical video. Audio is mixed across the complete duration.
+    concat = OUT / "frames.txt"
+    with concat.open("w", encoding="utf-8") as f:
+        for p in frames:
+            f.write(f"file '{p.as_posix()}'\nduration 3\n")
+        f.write(f"file '{frames[-1].as_posix()}'\n")
+    subprocess.run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),"-i",str(audio),
+                    "-vf","fps=30,format=yuv420p","-c:v","libx264","-preset","veryfast",
+                    "-c:a","aac","-b:a","128k","-shortest","-movflags","+faststart",str(video)],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    return video
+
+def upload(video, data):
+    required = ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN"]
+    if not all(os.getenv(k) for k in required):
+        raise RuntimeError("YouTube-OAuth-Secrets fehlen. Video wurde erstellt, aber nicht hochgeladen.")
+    creds = Credentials(
+        token=None,
+        refresh_token=os.environ["YOUTUBE_REFRESH_TOKEN"],
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=os.environ["YOUTUBE_CLIENT_ID"],
+        client_secret=os.environ["YOUTUBE_CLIENT_SECRET"],
+        scopes=["https://www.googleapis.com/auth/youtube.upload"]
+    )
+    youtube = build("youtube", "v3", credentials=creds)
+    body = {
+        "snippet": {
+            "title": data["title"][:100],
+            "description": data["description"] + "\n\n" + " ".join(data["hashtags"]),
+            "categoryId": "27",
+            "defaultLanguage": "de"
+        },
+        "status": {
+            "privacyStatus": PRIVACY if PRIVACY in ("private","unlisted","public") else "private",
+            "selfDeclaredMadeForKids": False
+        }
+    }
+    result = youtube.videos().insert(
+        part="snippet,status", body=body,
+        media_body=MediaFileUpload(str(video), mimetype="video/mp4", resumable=True)
+    ).execute()
+    log(f"YouTube Upload abgeschlossen: https://youtu.be/{result.get('id')}")
+    return result.get("id")
+
+def main():
+    log("AI ERIK AUTOPILOT gestartet")
+    trends = get_trends()
+    log(f"{len(trends)} Trend-Einträge gefunden")
+    data = generate_content(trends)
+    log(f"Thema gewählt: {data['title']}")
+    video = make_video(data)
+    log(f"Video erstellt: {video}")
+    video_id = upload(video, data)
+    (OUT / "latest.json").write_text(json.dumps({
+        "title": data["title"], "video_id": video_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "privacy": PRIVACY
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    log("Durchlauf erfolgreich beendet")
+
+if __name__ == "__main__":
+    main()
