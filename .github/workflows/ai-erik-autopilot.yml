@@ -1,0 +1,48 @@
+name: AI ERIK Autopilot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 16 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-erik-autopilot
+  cancel-in-progress: false
+
+jobs:
+  create-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Install dependencies
+        run: pip install -r autopilot/requirements.txt
+      - name: Produce and upload Short
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_PRIVACY_STATUS: private
+          MAX_DAILY_VIDEOS: "1"
+        run: python autopilot/main.py
+      - name: Save video if upload setup is incomplete or for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-erik-autopilot-output
+          path: autopilot/output/
+          if-no-files-found: ignore
+          retention-days: 3
