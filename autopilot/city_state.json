@@ -1,6 +1,6 @@
 {
   "city_name": "Neustadt",
-  "episode": 2,
+  "episode": 3,
   "population": 50,
   "buildings": [
     {
@@ -25,6 +25,15 @@
       "change": "Keine neuen Gebäude und keine Upgrades, da keine passenden Kommentare vorlagen. Die Stadt bleibt beim Rathaus; Folge 2 erzählt eine kleine Geschichte.",
       "video_id": "T7GJq-m8Uvs",
       "created_at": "2026-11-26T07:41:25.629367+00:00"
+    },
+    {
+      "episode": 3,
+      "title": "Folge 3: Das Licht, das niemand löschen konnte",
+      "story": "Leuchtturmwärter Ole sucht die Ursache für das erloschene Signallicht und findet statt eines Defekts einen riesigen schlafenden Tintenfisch. Seine freundliche Lösung schafft ein zweites, lebendiges Leuchtfeuer auf dem Meer.",
+      "script": "Das Licht ist aus – und der Öltank ist voll! Ole klettert die Turmspirale hoch, doch die Linse ist eiskalt. Etwas Riesiges schläft darin eingewickelt: ein Tintenfisch, der das Glas als warme Wiege nutzt. „Kein Wunder, dass die Schiffe blind sind“, flüstert Ole. Statt ihn zu vertreiben, näht er eine leuchtende Wärmeblende und hängt sie ins Wasser. Der Tintenfisch lässt die Linse frei, taucht ab und erstrahlt in tausend blauen Lichtern – ein zweiter Leuchtturm, lebendig und leuchtend. Am Morgen ankert ein Dampfer, und der Kapitän winkt: „Danke für das schönste Licht der Welt!“",
+      "change": "Leuchtturmwärter Ole sucht die Ursache für das erloschene Signallicht und findet statt eines Defekts einen riesigen schlafenden Tintenfisch. Seine freundliche Lösung schafft ein zweites, lebendiges Leuchtfeuer auf dem Meer.",
+      "video_id": "rBpINDCGMso",
+      "created_at": "2026-11-26T09:46:35.290578+00:00"
     }
   ],
   "processed_comments": [],
