@@ -2,6 +2,8 @@ name: AI ERIK Cartoon-Shorts
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *' # Alle 6 Stunden (UTC)
 
 permissions:
   contents: write
@@ -12,7 +14,7 @@ concurrency:
 
 jobs:
   create-cartoon-short:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -39,10 +41,10 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
-          AGNES_ENABLE_GENERATION: ${{ github.event_name == 'workflow_dispatch' && vars.AGNES_ENABLE_GENERATION == 'true' && 'true' || 'false' }}
+          AGNES_ENABLE_GENERATION: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && vars.AGNES_ENABLE_GENERATION == 'true' && 'true' || 'false' }}
           AGNES_BASE_URL: https://apihub.agnes-ai.com
           MAGIC_HOUR_API_KEY: ${{ secrets.MAGIC_HOUR_API_KEY }}
-          MAGIC_HOUR_ENABLE_GENERATION: ${{ github.event_name == 'workflow_dispatch' && vars.MAGIC_HOUR_ENABLE_GENERATION == 'true' && 'true' || 'false' }}
+          MAGIC_HOUR_ENABLE_GENERATION: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && vars.MAGIC_HOUR_ENABLE_GENERATION == 'true' && 'true' || 'false' }}
           MAGIC_HOUR_MAX_CREDITS_PER_EPISODE: ${{ vars.MAGIC_HOUR_MAX_CREDITS_PER_EPISODE || '0' }}
           OPENROUTER_MODEL: openrouter/free
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
