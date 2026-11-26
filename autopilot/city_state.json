@@ -27,5 +27,7 @@
       "created_at": "2026-11-26T07:41:25.629367+00:00"
     }
   ],
-  "processed_comments": []
+  "processed_comments": [],
+  "video_spend_date": "2026-11-26",
+  "video_spend_usd": 0.75
 }
