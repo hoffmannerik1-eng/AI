@@ -37,9 +37,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
-          RUNWAY_MODEL: grok_imagine_1_5_lite
-          VIDEO_DAILY_BUDGET_USD: '1.00'
+          MAGIC_HOUR_API_KEY: ${{ secrets.MAGIC_HOUR_API_KEY }}
           OPENROUTER_MODEL: openrouter/free
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
