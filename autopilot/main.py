@@ -228,10 +228,6 @@ def make_video(d):
         "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
         "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
     return video
-    except AgnesGenerationDisabled as exc:
-        raise RuntimeError("Es wurde nichts generiert oder hochgeladen, weil die Video-KI nicht freigegeben ist: "+str(exc)) from exc
-    except Exception as exc:
-        raise RuntimeError("Der Cartoonfilm konnte nicht mit der Video-KI erstellt werden. Es wird absichtlich kein Ersatz-Textvideo hochgeladen: "+str(exc)) from exc
 
 def verify_video(video):
     """Prüft das fertige MP4, bevor es an YouTube übergeben wird."""
