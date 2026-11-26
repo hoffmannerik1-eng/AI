@@ -145,15 +145,29 @@ def local_story_fallback(state, comments):
         f"Mitten im Wald verschwinden alle Lichter. {name} folgt einer Spur aus funkelnden Punkten und findet eine alte Maschine unter den Wurzeln. Ein Kristall passt genau in die Öffnung. Die Maschine beginnt zu leuchten. Augenblicklich erwacht der ganze Wald. Doch zwischen den Bäumen erscheint noch ein geheimnisvoller Lichtpunkt."
     ]
     script=scripts[(episode-1)%len(scripts)]
+    fallback_modes=[
+        ("Fantasy und Abenteuer","Story-Animation","Farbige 2D-Abenteueranimation mit weichen Lichtakzenten und dynamischen Figuren."),
+        ("Technik und Roboter","Sci-Fi-Animation","Verspielte futuristische 2D-Animation mit leuchtenden Technikdetails."),
+        ("Rätsel und Geheimnisse","Mystery-Story","Atmosphärische 2D-Mystery-Animation mit kontrastreichem Licht."),
+        ("Weltraum und Entdeckung","Sci-Fi-Abenteuer","Bunte Weltraum-Animation mit klaren Formen und bewegten Hintergründen."),
+        ("Natur und Freundschaft","Feel-good-Animation","Warme, farbenfrohe 2D-Animation mit lebendigen Naturkulissen.")
+    ]
+    topic,video_format,style=fallback_modes[(episode-1)%len(fallback_modes)]
     return {
         "title":f"Folge {episode}: {title}",
-        "description":"Eine originelle Roblox-inspirierte Cartoon-Geschichte.",
+        "description":"Eine eigenständige, animierte Kurzgeschichte.",
+        "topic":topic,
+        "format":video_format,
+        "trend_reason":"Lokaler Fallback: abwechslungsreiche Idee, wenn keine Text-KI erreichbar ist.",
         "script":script,
         "story":story,
-        "visual_style":"Hochwertiger 3D-Cartoon im Roblox-Look: blockige Figuren, klare Quaderformen, plastische Materialien, kräftige Farben, filmisches Licht, Hochformat 9:16.",
+        "visual_style":style+" Hochformat 9:16, klare Figuren, sichtbare Aktionen und filmische Beleuchtung.",
         "characters":[{"name":name,"appearance":clothes,"clothing":clothes,"personality":personality}],
         "scenes":scenes,
-        "hashtags":["#Roblox","#Shorts","#Cartoon","#Story","#AI"]
+        "edit_plan":["Sofortiger visueller Hook und kurzer Push-in","Fließender Follow-Shot zur Handlung","Nahaufnahme des wichtigen Gegenstands","Dynamischer Perspektivwechsel beim Wendepunkt","Kurzer Reveal-Shot mit Reaktion"],
+        "sound_plan":["Originaler atmosphärischer Einstieg","Leiser Bewegungssound","Originaler Entdeckungs-Chime","Kurzer Whoosh zum Wendepunkt","Warmer Abschlussklang"],
+        "voice_required":True,
+        "hashtags":["#Shorts","#Animation","#Story","#AI"]
     }
 
 def generate(state,comments,trend_data=None):
