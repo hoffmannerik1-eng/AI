@@ -80,26 +80,25 @@ def generate_video(data, output_dir, destination, clip_duration):
     normalized = []
     for index, scene in enumerate(scenes, start=1):
         prompt = (
-            "Create one original cinematic vertical 9:16 video shot for episode "
+            "Create one original cinematic vertical 9:16 short-film shot for episode "
             + str(data.get("episode", 1))
-            + " of a original German short-film story. "
-            "CITY: "
-            + str(data.get("city_name", "Neustadt"))
-            + ". Keep architecture, street layout, materials and warm cinematic color palette consistent. "
-            "CURRENT LANDMARKS: "
-            + building_list
-            + ". EPISODE: "
+            + " of an original German fictional story. Keep the same main characters, "
+            "clothing, visual style and story continuity across all five scenes. "
+            "EPISODE: "
             + str(data.get("title", ""))
+            + ". STORY: "
+            + str(data.get("story", ""))
             + ". SCENE "
             + str(index)
             + " ACTION: "
             + str(scene)
             + ". CAMERA: "
             + shot_directions[index - 1]
-            + " Show this exact action clearly. Detailed realistic miniature sets, natural motion, "
-            "cinematic depth of field, smooth professional camera work and believable lighting. "
-             "Do not introduce unrelated characters or change the story. "
-            "No text, subtitles, labels, logos or watermarks."
+            + " Show this exact action clearly. Cinematic realistic environments, "
+            "natural character movement, expressive faces, depth of field, "
+            "professional camera work and believable lighting. "
+            "Do not introduce unrelated characters or change the story. "
+            "No city-building simulation, text, subtitles, labels, logos or watermarks."
         )[:1800]
 
         try:
@@ -107,7 +106,7 @@ def generate_video(data, output_dir, destination, clip_duration):
                 end_seconds=CLIP_SECONDS,
                 aspect_ratio="9:16",
                 style={"prompt": prompt},
-                name="AI ERIK Stadt Folge "
+                name= "AI ERIK Story Folge "
                 + str(data.get("episode", 1))
                 + " Szene "
                 + str(index),
