@@ -6,7 +6,7 @@ import edge_tts
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from video_provider import generate_video as generate_runway_video, estimate_cost as estimate_runway_cost
+from video_provider import generate_video as generate_magic_hour_video, FreeCreditsUnavailable
 
 ROOT=Path(__file__).parent
 OUT=ROOT/"output"; OUT.mkdir(exist_ok=True)
@@ -299,17 +299,23 @@ def make_video(d):
         f"aevalsrc=0.020*sin(2*PI*110*t)+0.014*sin(2*PI*164.81*t)+0.010*sin(2*PI*220*t):s=44100:d={seconds:.3f}",
         "-af",f"afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,seconds-2):.3f}:d=2",
         "-c:a","pcm_s16le",str(music)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
-    if os.getenv("RUNWAY_API_KEY","").strip():
-        log("Runway-Video-KI aktiv: echte KI-generierte Szenen werden erstellt.")
-        raw=OUT/"runway_combined.mp4"
-        generate_runway_video(d,OUT,raw)
-        subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
-            "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
-            "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
-            "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
-            "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
-        return video
-    log("RUNWAY_API_KEY fehlt: sichere lokale Animations-Fallback-Version wird verwendet.")
+    magic_key=os.getenv("MAGIC_HOUR_API_KEY","").strip()
+    if magic_key:
+        log("Magic Hour Free-Video-KI wird geprüft.")
+        raw=OUT/"magic_hour_combined.mp4"
+        try:
+            generate_magic_hour_video(d,OUT,raw,clip_duration=max(5,math.ceil(seconds/5)))
+            subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
+                "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
+                "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
+                "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
+                "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
+            return video
+        except FreeCreditsUnavailable as exc:
+            log(str(exc))
+            log("Kostenlose Credits reichen nicht; lokale Animation wird als Fallback erstellt.")
+    else:
+        log("MAGIC_HOUR_API_KEY fehlt: lokale Animations-Fallback-Version wird verwendet.")
     frames=render(d,seconds)
     subprocess.run(["ffmpeg","-y","-framerate","24","-i",str(frames/"frame_%05d.png"),"-i",str(audio),"-i",str(music),
         "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
@@ -350,19 +356,6 @@ def main():
     log("AI ERIK STADT-AUTOPILOT gestartet"); state=load_state(); ideas=get_comments(state)
     d=generate(state,ideas); d["episode"]=int(state.get("episode",0))+1
     log(f"{d['city_name']} | Folge {d['episode']} | {len(d['buildings'])} Gebäude")
-    if os.getenv("RUNWAY_API_KEY","").strip():
-        model=os.getenv("RUNWAY_MODEL","grok_imagine_1_5_lite")
-        clips=min(5,len(d.get("scenes",[])))
-        estimated=estimate_runway_cost(model,5,clips)
-        today=datetime.now(timezone.utc).date().isoformat()
-        used=float(state.get("video_spend_usd",0)) if state.get("video_spend_date")==today else 0.0
-        daily_limit=float(os.getenv("VIDEO_DAILY_BUDGET_USD","1.00"))
-        if used+estimated>daily_limit:
-            raise RuntimeError(f"Tageslimit für Video-KI erreicht: bereits {used:.2f} USD genutzt; nächste Folge ca. {estimated:.2f} USD; Limit {daily_limit:.2f} USD.")
-        state["video_spend_date"]=today
-        state["video_spend_usd"]=round(used+estimated,2)
-        STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
-        log(f"Video-KI-Kosten geschätzt: {estimated:.2f} USD; Tageslimit: {daily_limit:.2f} USD.")
     video=make_video(d); verify_video(video); dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
     vid=None if dry else upload(video,d)
     state.update({"city_name":d["city_name"],"episode":d["episode"],"population":d["population"],"buildings":d["buildings"]})
