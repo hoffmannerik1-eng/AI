@@ -268,6 +268,26 @@ def make_video(d):
         "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
     return video
 
+def verify_video(video):
+    """Prüft das fertige MP4, bevor es an YouTube übergeben wird."""
+    probe=subprocess.run(["ffprobe","-v","error","-show_entries",
+        "stream=codec_type,width,height","-show_entries","format=duration",
+        "-of","json",str(video)],capture_output=True,text=True,check=True)
+    info=json.loads(probe.stdout)
+    streams=info.get("streams",[])
+    picture=next((s for s in streams if s.get("codec_type")=="video"),None)
+    sound=any(s.get("codec_type")=="audio" for s in streams)
+    seconds=float(info.get("format",{}).get("duration",0))
+    if not picture or picture.get("width")!=1080 or picture.get("height")!=1920:
+        raise RuntimeError("Video-Prüfung fehlgeschlagen: Format ist nicht 1080x1920.")
+    if not sound:
+        raise RuntimeError("Video-Prüfung fehlgeschlagen: Tonspur fehlt.")
+    if not 3<=seconds<=180:
+        raise RuntimeError(f"Video-Prüfung fehlgeschlagen: Länge {seconds:.1f}s liegt außerhalb 3-180s.")
+    if Path(video).stat().st_size<50000:
+        raise RuntimeError("Video-Prüfung fehlgeschlagen: MP4 ist unerwartet klein.")
+    log(f"Video geprüft: 1080x1920 | {seconds:.1f}s | Tonspur vorhanden")
+
 def upload(video,d):
     yt=yt_service()
     if not yt: raise RuntimeError("YouTube-OAuth-Secrets fehlen")
@@ -280,7 +300,7 @@ def main():
     log("AI ERIK STADT-AUTOPILOT gestartet"); state=load_state(); ideas=get_comments(state)
     d=generate(state,ideas); d["episode"]=int(state.get("episode",0))+1
     log(f"{d['city_name']} | Folge {d['episode']} | {len(d['buildings'])} Gebäude")
-    video=make_video(d); dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
+    video=make_video(d); verify_video(video); dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
     vid=None if dry else upload(video,d)
     state.update({"city_name":d["city_name"],"episode":d["episode"],"population":d["population"],"buildings":d["buildings"]})
     state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"change":d["change_summary"],"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
