@@ -94,7 +94,7 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wört
         return json.loads(text[left:right+1])
 
     def check(obj):
-        keys=["city_name","title","description","script","scenes","buildings","population","change_summary","hashtags"]
+        keys=["title","description","script","scenes","story","hashtags"]
         if not isinstance(obj,dict) or any(k not in obj for k in keys):
             raise ValueError("KI-Ausgabe unvollständig")
         if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5:
