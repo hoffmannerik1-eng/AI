@@ -1,4 +1,4 @@
-name: AI ERIK Cartoon-Autopilot
+name: AI ERIK Cartoon-Shorts
 
 on:
   workflow_dispatch:
@@ -54,7 +54,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add autopilot/city_state.json
+          git add autopilot/story_state.json
           if ! git diff --cached --quiet; then
             git commit -m "Save AI cartoon episode history"
             git push
