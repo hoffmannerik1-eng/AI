@@ -1,0 +1,24 @@
+{
+  "city_name": "Neustadt",
+  "episode": 1,
+  "population": 50,
+  "buildings": [
+    {
+      "name": "Rathaus",
+      "type": "rathaus",
+      "level": 1,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "history": [
+    {
+      "episode": 1,
+      "title": "Unsere Stadt #1: Der allererste Tag im Rathaus",
+      "change": "Keine neuen Gebäude gebaut, da noch keine Kommentare vorlagen. Die Stadt startet mit dem Rathaus und den ersten 50 Bürgern.",
+      "video_id": "coTkTejf9TA",
+      "created_at": "2026-11-26T03:49:51.155781+00:00"
+    }
+  ],
+  "processed_comments": []
+}
