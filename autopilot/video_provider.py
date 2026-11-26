@@ -82,26 +82,18 @@ def generate_video(data, output_dir, destination, clip_duration):
         character_bible = data.get("characters", [])
         visual_style = str(data.get("visual_style", "High-end colorful 3D animated cartoon feature film"))
         prompt = (
-            "Create a HIGH-QUALITY FULLY ANIMATED 3D CARTOON FILM shot, vertical 9:16, "
-            "for a German YouTube Short. This must look like a polished theatrical family "
-            "animation: appealing stylized cartoon characters, expressive large eyes, "
-            "clear readable facial emotions, appealing rounded shapes, rich colorful "
-            "materials, beautifully designed cartoon environments, squash-and-stretch "
-            "character motion, lively gestures, dynamic action, cinematic composition, "
-            "smooth camera movement and professional animated-film lighting. "
-            "It must be unmistakably CARTOON ANIMATION, NOT live action, NOT photorealism, "
-            "NOT real human actors, NOT a slideshow, NOT still illustrations. "
-            "VISUAL STYLE BIBLE: " + visual_style + ". "
-            "CHARACTER BIBLE (keep exact same designs, face, body proportions, colors "
-            "and clothes in every scene): " + str(character_bible) + ". "
-            "EPISODE: " + str(data.get("title", "")) + ". "
-            "STORY: " + str(data.get("story", "")) + ". "
-            "SCENE " + str(index) + " ACTION: " + str(scene) + ". "
-            "CAMERA: " + shot_directions[index - 1] + " "
-            "Show the described action clearly with visible character animation. "
-            "Keep character identity and art direction consistent with the other scenes. "
-            "No city-building simulation, no captions, no subtitles, no text, no logos, "
-            "no watermarks, no realistic footage."
+            "Create a fully animated vertical 9:16 ROBLOX STORY SHORT scene. "
+            "MANDATORY STYLE: recognizable Roblox-like block avatars with cuboid head, cuboid torso, block arms and legs, simple Roblox joints, smooth slightly plastic surfaces, simple textures and clean low-poly 3D geometry. "
+            "Characters visibly perform human-like Roblox actions: walk, run, turn, sit, reach, grab, point, react and interact with each other and objects. Use simple expressive Roblox faces. "
+            "Show the actual story event, not static posing or a slideshow. Keep the exact same character identity, face, hair, proportions, colors and clothing across all five scenes. "
+            "Choose location, background, props, weather, time of day and lighting from THIS story scene; do not default to suburban streets or bicycles unless the story requires them. "
+            "Use a third-person camera that follows the action. NO subtitles, captions, readable text, letters, title cards, logos or watermarks. NO live action, photorealism or other animation style. "
+            "VISUAL STYLE: " + visual_style + ". "
+            "CHARACTER DESIGNS (identical in every scene): " + str(character_bible) + ". "
+            "EPISODE: " + str(data.get("title", "")) + ". STORY: " + str(data.get("story", "")) + ". "
+            "THIS SCENE AND ITS VISIBLE ACTION: " + str(scene) + ". "
+            "CAMERA DIRECTION: " + shot_directions[index - 1] + " "
+            "Animate the action continuously with clear body movement and interaction. "
         )[:3500]
 
         try:
