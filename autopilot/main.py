@@ -105,44 +105,72 @@ city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), descri
             log(f"Gemini nicht verfügbar; OpenRouter wird versucht: {str(e)[:150]}")
 
     if ROUTER:
-        configured=os.getenv("OPENROUTER_MODEL","openrouter/free")
-        models=[]
-        for model in [configured,"openai/gpt-oss-20b:free","google/gemma-3-27b-it:free",
-                      "meta-llama/llama-3.3-70b-instruct:free","qwen/qwen3-4b:free"]:
-            if model and model not in models: models.append(model)
+        # Nur aktuell gelistete kostenlose Textmodelle verwenden. Die Modellliste
+        # ändert sich häufig; deshalb keine veralteten, fest codierten IDs.
+        models=["openrouter/free"]
+        try:
+            req=urllib.request.Request("https://openrouter.ai/api/v1/models",
+                headers={"Authorization":"Bearer "+ROUTER,"Accept":"application/json"})
+            with urllib.request.urlopen(req,timeout=25) as response:
+                catalog=json.loads(response.read().decode())
+            for item in catalog.get("data",[]):
+                model_id=item.get("id","")
+                arch=item.get("architecture") or {}
+                modalities=arch.get("output_modalities") or []
+                pricing=item.get("pricing") or {}
+                if (model_id.endswith(":free") and "text" in modalities
+                    and str(pricing.get("prompt","")) in ("0","0.0","0.000000")
+                    and str(pricing.get("completion","")) in ("0","0.0","0.000000")
+                    and model_id not in models):
+                    models.append(model_id)
+                if len(models)>=6: break
+            log(f"{len(models)-1} aktuell gelistete kostenlose Textmodelle als Fallback gefunden")
+        except Exception as e:
+            log(f"Aktuelle OpenRouter-Modellliste nicht abrufbar: {str(e)[:140]}")
+
         failures=[]
         for model in models:
-            try:
-                payload={"model":model,"messages":[
-                    {"role":"system","content":"Du erstellst eine sichere fiktive Stadt. Antworte ausschließlich mit einem vollständigen JSON-Objekt."},
-                    {"role":"user","content":prompt}],
-                    "temperature":0.7,"max_tokens":2600,"response_format":{"type":"json_object"}}
-                req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
-                    data=json.dumps(payload).encode(),
-                    headers={"Authorization":"Bearer "+ROUTER,"Content-Type":"application/json",
-                    "HTTP-Referer":"https://github.com/hoffmannerik1-eng/AI","X-Title":"AI ERIK Stadt"},
-                    method="POST")
-                with urllib.request.urlopen(req,timeout=90) as response:
-                    data=json.loads(response.read().decode())
-                choices=data.get("choices") or []
-                message=(choices[0].get("message") or {}) if choices else {}
-                raw=message.get("content")
-                if isinstance(raw,list):
-                    raw="".join(x.get("text","") for x in raw if isinstance(x,dict))
-                if not isinstance(raw,str) or not raw.strip():
-                    raise ValueError("Modell lieferte leeren Inhalt")
-                obj=check(parse_json(raw))
-                log(f"OpenRouter-Modell {model} hat die Stadtfolge erstellt")
-                if not comments: obj["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
-                return obj
-            except Exception as e:
-                detail=str(e)
-                if isinstance(e,urllib.error.HTTPError):
-                    try: detail=e.read().decode()[:180]
-                    except Exception: pass
-                failures.append(f"{model}: {detail[:120]}")
-                log(f"OpenRouter-Modell {model} nicht verfügbar; nächstes Modell wird versucht")
-        raise RuntimeError("Alle KI-Modelle fehlgeschlagen: "+" | ".join(failures[-3:]))
+            # Erst mit JSON-Modus versuchen. Einige kostenlose Provider unterstützen
+            # response_format nicht; dann dieselbe Anfrage ohne diese Option wiederholen.
+            base_payload={"model":model,"messages":[
+                {"role":"system","content":"Du erstellst eine sichere fiktive Stadt. Antworte ausschließlich mit einem vollständigen JSON-Objekt."},
+                {"role":"user","content":prompt}],
+                "temperature":0.7,"max_tokens":3000}
+            for json_mode in (True,False):
+                try:
+                    payload=dict(base_payload)
+                    if json_mode: payload["response_format"]={"type":"json_object"}
+                    req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
+                        data=json.dumps(payload).encode(),
+                        headers={"Authorization":"Bearer "+ROUTER,"Content-Type":"application/json",
+                        "HTTP-Referer":"https://github.com/hoffmannerik1-eng/AI","X-Title":"AI ERIK Stadt"},
+                        method="POST")
+                    with urllib.request.urlopen(req,timeout=100) as response:
+                        data=json.loads(response.read().decode())
+                    choices=data.get("choices") or []
+                    message=(choices[0].get("message") or {}) if choices else {}
+                    raw=message.get("content")
+                    if isinstance(raw,list):
+                        raw="".join(x.get("text","") for x in raw if isinstance(x,dict))
+                    if not isinstance(raw,str) or not raw.strip():
+                        raise ValueError("Modell lieferte leeren Inhalt")
+                    obj=check(parse_json(raw))
+                    log(f"OpenRouter-Modell {model} hat die Stadtfolge erstellt")
+                    if not comments: obj["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
+                    return obj
+                except Exception as e:
+                    detail=str(e)
+                    if isinstance(e,urllib.error.HTTPError):
+                        try: detail=e.read().decode()[:260]
+                        except Exception: pass
+                    failures.append(f"{model} ({'JSON-Modus' if json_mode else 'Standard'}): {detail[:180]}")
+                    # Wenn nur das JSON-Format nicht unterstützt wird, direkt
+                    # ohne response_format erneut versuchen.
+                    if json_mode and isinstance(e,urllib.error.HTTPError) and e.code in (400,404,422):
+                        continue
+                    break
+            log(f"OpenRouter-Modell {model} nicht verfügbar; nächstes kostenloses Modell wird versucht")
+        raise RuntimeError("Alle aktuell gelisteten kostenlosen KI-Modelle fehlgeschlagen: "+" | ".join(failures[-4:]))
     raise RuntimeError("Keine KI verfügbar. GEMINI_API_KEY oder OPENROUTER_API_KEY in GitHub Secrets prüfen.")
 
 def font(n,b=False):
