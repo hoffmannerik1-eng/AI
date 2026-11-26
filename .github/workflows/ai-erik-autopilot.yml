@@ -53,10 +53,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add autopilot/story_state.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Save AI cartoon episode history"
-            git push
+          if [ -f autopilot/story_state.json ]; then
+            git add -- autopilot/story_state.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Save AI cartoon episode history"
+              git push
+            else
+              echo "Keine Änderung am Episodenverlauf."
+            fi
+          else
+            echo "Noch keine Episodenhistorie vorhanden; der Hauptschritt hat die Datei nicht erstellt."
           fi
       - name: Save uploaded episode artifact
         if: always()
