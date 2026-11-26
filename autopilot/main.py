@@ -256,7 +256,6 @@ Keine Untertitel, eingeblendeten Wörter, Logos oder Wasserzeichen. Keine gefäh
     else: log("Keine Text-KI konfiguriert; lokale Story wird verwendet.")
     return local_story_fallback(state,comments)
 
-async def voice
 async def voice(txt,path): await edge_tts.Communicate(txt,"de-DE-ConradNeural").save(str(path))
 
 def create_local_cartoon(raw,d,seconds):
