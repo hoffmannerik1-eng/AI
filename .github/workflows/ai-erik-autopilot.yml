@@ -2,12 +2,6 @@ name: AI ERIK Stadt-Autopilot
 
 on:
   workflow_dispatch:
-    inputs:
-      upload_public:
-        description: "Öffentlichen Upload nach Freigabe durch deine Eltern"
-        required: true
-        type: boolean
-        default: false
   schedule:
     - cron: "0 * * * *"
 
@@ -45,8 +39,8 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          YOUTUBE_PRIVACY_STATUS: private
-          DRY_RUN: ${{ github.event_name == 'schedule' || !inputs.upload_public }}
+          YOUTUBE_PRIVACY_STATUS: public
+          DRY_RUN: 'false'
         run: python autopilot/main.py
       - name: Save evolving city state
         if: success()
@@ -58,7 +52,7 @@ jobs:
             git commit -m "Update AI city world state"
             git push
           fi
-      - name: Save episode for review
+      - name: Save uploaded episode artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
