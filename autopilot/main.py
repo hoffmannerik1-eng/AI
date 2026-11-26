@@ -168,7 +168,10 @@ def main():
     log(f"Thema gewählt: {data['title']}")
     video = make_video(data)
     log(f"Video erstellt: {video}")
-    video_id = upload(video, data)
+    dry_run = os.getenv("DRY_RUN", "true").lower() in ("1", "true", "yes")
+    video_id = None if dry_run else upload(video, data)
+    if dry_run:
+        log("TESTMODUS: Kein YouTube-Upload ausgeführt. Video liegt als Artifact bereit.")
     (OUT / "latest.json").write_text(json.dumps({
         "title": data["title"], "video_id": video_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
