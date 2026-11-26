@@ -2,6 +2,12 @@ name: AI ERIK Autopilot
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur Video erstellen, nicht zu YouTube hochladen"
+        required: true
+        type: boolean
+        default: true
   schedule:
     - cron: "0 16 * * *"
 
@@ -29,13 +35,14 @@ jobs:
           sudo apt-get install -y ffmpeg
       - name: Install dependencies
         run: pip install -r autopilot/requirements.txt
-      - name: Produce and upload Short
+      - name: Create Short (upload only when dry-run is disabled)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PRIVACY_STATUS: private
+          DRY_RUN: ${{ github.event_name == 'schedule' || inputs.dry_run }}
           MAX_DAILY_VIDEOS: "1"
         run: python autopilot/main.py
       - name: Save video if upload setup is incomplete or for review
