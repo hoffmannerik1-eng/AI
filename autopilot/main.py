@@ -47,7 +47,17 @@ def get_comments(state):
                 items=yt.commentThreads().list(part="snippet",videoId=video_id,maxResults=100,
                     order="time",textFormat="plainText").execute().get("items",[])
             except Exception as e:
-                log(f"Kommentare für Video übersprungen: {str(e)[:120]}")
+                detail=str(e)
+                try:
+                    raw=getattr(e,"content",b"")
+                    if raw:
+                        payload=json.loads(raw.decode() if isinstance(raw,bytes) else raw)
+                        err=payload.get("error",{})
+                        detail=f"HTTP {getattr(e,'status_code',403)}: {err.get('message',detail)}"
+                        reasons=[x.get("reason") for x in err.get("errors",[]) if x.get("reason")]
+                        if reasons: detail+=" | Grund: "+", ".join(reasons)
+                except Exception: pass
+                log(f"Kommentare für Video übersprungen: {detail[:240]}")
                 continue
             for it in items:
                 top=it["snippet"]["topLevelComment"]; cid=top["id"]
