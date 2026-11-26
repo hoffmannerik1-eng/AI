@@ -32,24 +32,33 @@ def yt_service():
     return build("youtube","v3",credentials=c)
 
 def get_comments(state):
+    """Liest Kommentare der neuesten Videos über die Upload-Playlist."""
     try:
         yt=yt_service()
         if not yt: return []
-        ch=yt.channels().list(part="id",mine=True).execute().get("items",[])
-        if not ch: return []
-        items=yt.commentThreads().list(part="snippet",allThreadsRelatedToChannel=True,
-            channelId=ch[0]["id"],maxResults=100,order="time",textFormat="plainText").execute().get("items",[])
+        channels=yt.channels().list(part="contentDetails",mine=True).execute().get("items",[])
+        if not channels: return []
+        uploads=channels[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        videos=yt.playlistItems().list(part="contentDetails",playlistId=uploads,maxResults=10).execute().get("items",[])
         done=set(state.get("processed_comments",[])); out=[]
-        for it in items:
-            c=it["snippet"]["topLevelComment"]; cid=c["id"]
-            txt=re.sub(r"\s+"," ",c["snippet"].get("textDisplay","")).strip()
-            if cid not in done and txt:
-                done.add(cid); out.append(txt[:300])
+        for video in videos:
+            video_id=video["contentDetails"]["videoId"]
+            try:
+                items=yt.commentThreads().list(part="snippet",videoId=video_id,maxResults=100,
+                    order="time",textFormat="plainText").execute().get("items",[])
+            except Exception as e:
+                log(f"Kommentare für Video übersprungen: {str(e)[:120]}")
+                continue
+            for it in items:
+                top=it["snippet"]["topLevelComment"]; cid=top["id"]
+                txt=re.sub(r"\\s+"," ",top["snippet"].get("textDisplay","")).strip()
+                if cid not in done and txt:
+                    done.add(cid); out.append(txt[:300])
         state["processed_comments"]=list(done)[-1000:]
         log(f"{len(out)} neue Zuschauerideen")
         return out[:25]
     except Exception as e:
-        log(f"Kommentare nicht verfügbar; OAuth-Leseberechtigung prüfen: {str(e)[:180]}")
+        log(f"Kommentare konnten nicht gelesen werden: {str(e)[:180]}")
         return []
 
 def generate(state,comments):
@@ -59,33 +68,82 @@ STADTSTAND: {json.dumps(state,ensure_ascii=False)}
 NEUE KOMMENTARE: {json.dumps(comments,ensure_ascii=False)}
 Erstelle Folge {state.get('episode',0)+1}. Maximal 2 neue Gebäude/Upgrades je Folge; bestehende Gebäude beibehalten. Antworte NUR JSON mit:
 city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), description (Hinweis fiktive KI-Stadt), script (75-105 deutsche Wörter), scenes (genau 5 kurze Szenen), buildings (vollständige Liste max 18; jedes Objekt name,type aus rathaus/haus/hochhaus/cafe/schule/park/shop/feuerwehr/polizei/krankenhaus/bahnhof/stadion/schwimmbad/bruecke, level 1-3, x und y ganze Zahlen -3 bis 3; keine doppelten Koordinaten), population (50-50000), change_summary, hashtags (3-5)."""
-    raw=""
+    def parse_json(text):
+        text=(text or "").strip()
+        if text.startswith("```"):
+            text=re.sub(r"^\`\`\`(?:json)?\\s*","",text,flags=re.I)
+            text=re.sub(r"\\s*\`\`\`$","",text)
+        left=text.find("{"); right=text.rfind("}")
+        if left<0 or right<left: raise ValueError("KI lieferte kein JSON")
+        return json.loads(text[left:right+1])
+
+    def check(obj):
+        keys=["city_name","title","description","script","scenes","buildings","population","change_summary","hashtags"]
+        if not isinstance(obj,dict) or any(k not in obj for k in keys):
+            raise ValueError("KI-Ausgabe unvollständig")
+        if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5:
+            raise ValueError("Es müssen genau fünf Szenen sein")
+        if not isinstance(obj["buildings"],list) or not 45<=len(str(obj["script"]).split())<=140:
+            raise ValueError("Gebäude oder Skript ungültig")
+        obj["buildings"]=obj["buildings"][:18]
+        return obj
+
+    # Gemini versuchen; bei Quota-Fehler automatisch zu OpenRouter wechseln.
     if GEMINI:
         try:
             import google.generativeai as genai
             genai.configure(api_key=GEMINI)
-            raw=genai.GenerativeModel(MODEL).generate_content(prompt).text.strip()
-            log("Gemini hat die Stadtfolge geplant")
-        except Exception as e: log(f"Gemini nicht verfügbar: {str(e)[:160]}")
-    if not raw and ROUTER:
-        payload={"model":os.getenv("OPENROUTER_MODEL","openrouter/free"),
-            "messages":[{"role":"system","content":"Du erstellst eine sichere fiktive Stadt. Antworte nur mit JSON."},{"role":"user","content":prompt}],
-            "temperature":0.75,"max_tokens":2200,"response_format":{"type":"json_object"}}
-        req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",data=json.dumps(payload).encode(),
-            headers={"Authorization":"Bearer "+ROUTER,"Content-Type":"application/json","HTTP-Referer":"https://github.com/hoffmannerik1-eng/AI","X-Title":"AI ERIK Stadt"},method="POST")
-        with urllib.request.urlopen(req,timeout=90) as r: raw=json.loads(r.read().decode())["choices"][0]["message"]["content"].strip()
-        log("OpenRouter hat die Stadtfolge erstellt")
-    if not raw: raise RuntimeError("Keine KI verfügbar. GEMINI_API_KEY oder OPENROUTER_API_KEY prüfen.")
-    raw=raw.strip()
-    if raw.startswith(chr(96)*3): raw=raw.strip(chr(96)).replace("json","",1).strip()
-    d=json.loads(raw)
-    need=["city_name","title","description","script","scenes","buildings","population","change_summary","hashtags"]
-    if any(k not in d for k in need) or len(d["scenes"])!=5 or not 45<=len(d["script"].split())<=140: raise ValueError("KI-Ausgabe hat die Qualitätsprüfung nicht bestanden")
-    d["buildings"]=d["buildings"][:18]
-    # Ohne neue Zuschauerkommentare bleibt die Stadt baulich unverändert.
-    if not comments:
-        d["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
-    return d
+            response=genai.GenerativeModel(MODEL).generate_content(prompt)
+            raw=getattr(response,"text",None)
+            if raw and raw.strip():
+                obj=check(parse_json(raw))
+                log("Gemini hat die Stadtfolge geplant")
+                if not comments: obj["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
+                return obj
+            log("Gemini lieferte eine leere Antwort; OpenRouter wird versucht")
+        except Exception as e:
+            log(f"Gemini nicht verfügbar; OpenRouter wird versucht: {str(e)[:150]}")
+
+    if ROUTER:
+        configured=os.getenv("OPENROUTER_MODEL","openrouter/free")
+        models=[]
+        for model in [configured,"openai/gpt-oss-20b:free","google/gemma-3-27b-it:free",
+                      "meta-llama/llama-3.3-70b-instruct:free","qwen/qwen3-4b:free"]:
+            if model and model not in models: models.append(model)
+        failures=[]
+        for model in models:
+            try:
+                payload={"model":model,"messages":[
+                    {"role":"system","content":"Du erstellst eine sichere fiktive Stadt. Antworte ausschließlich mit einem vollständigen JSON-Objekt."},
+                    {"role":"user","content":prompt}],
+                    "temperature":0.7,"max_tokens":2600,"response_format":{"type":"json_object"}}
+                req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
+                    data=json.dumps(payload).encode(),
+                    headers={"Authorization":"Bearer "+ROUTER,"Content-Type":"application/json",
+                    "HTTP-Referer":"https://github.com/hoffmannerik1-eng/AI","X-Title":"AI ERIK Stadt"},
+                    method="POST")
+                with urllib.request.urlopen(req,timeout=90) as response:
+                    data=json.loads(response.read().decode())
+                choices=data.get("choices") or []
+                message=(choices[0].get("message") or {}) if choices else {}
+                raw=message.get("content")
+                if isinstance(raw,list):
+                    raw="".join(x.get("text","") for x in raw if isinstance(x,dict))
+                if not isinstance(raw,str) or not raw.strip():
+                    raise ValueError("Modell lieferte leeren Inhalt")
+                obj=check(parse_json(raw))
+                log(f"OpenRouter-Modell {model} hat die Stadtfolge erstellt")
+                if not comments: obj["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
+                return obj
+            except Exception as e:
+                detail=str(e)
+                if isinstance(e,urllib.error.HTTPError):
+                    try: detail=e.read().decode()[:180]
+                    except Exception: pass
+                failures.append(f"{model}: {detail[:120]}")
+                log(f"OpenRouter-Modell {model} nicht verfügbar; nächstes Modell wird versucht")
+        raise RuntimeError("Alle KI-Modelle fehlgeschlagen: "+" | ".join(failures[-3:]))
+    raise RuntimeError("Keine KI verfügbar. GEMINI_API_KEY oder OPENROUTER_API_KEY in GitHub Secrets prüfen.")
 
 def font(n,b=False):
     p="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if b else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
