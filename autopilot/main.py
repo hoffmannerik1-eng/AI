@@ -21,8 +21,7 @@ def load_state():
     if STATE.exists():
         try: return json.loads(STATE.read_text(encoding="utf-8"))
         except Exception: pass
-    return {"city_name":"Neustadt","episode":0,"population":1,"buildings":[
-        {"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}],"history":[],"processed_comments":[]}
+    return {"episode":0,"history":[],"processed_comments":[]}
 
 def yt_service():
     keys=["YOUTUBE_CLIENT_ID","YOUTUBE_CLIENT_SECRET","YOUTUBE_REFRESH_TOKEN"]
@@ -113,7 +112,6 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wört
             if raw and raw.strip():
                 obj=check(parse_json(raw))
                 log("Gemini hat die Stadtfolge geplant")
-                if not comments: obj["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
                 return obj
             log("Gemini lieferte eine leere Antwort; OpenRouter wird versucht")
         except Exception as e:
@@ -238,7 +236,7 @@ def make_video(d):
     audio=OUT/"voice.mp3"; asyncio.run(voice(d["script"],audio))
     p=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",str(audio)],capture_output=True,text=True,check=True)
     seconds=max(1,float(p.stdout.strip()))
-    video=OUT/"stadtfolge.mp4"
+    video=OUT/"story_episode.mp4"
     music=OUT/"ambient.wav"
     subprocess.run(["ffmpeg","-y","-f","lavfi","-i",
         f"aevalsrc=0.020*sin(2*PI*110*t)+0.014*sin(2*PI*164.81*t)+0.010*sin(2*PI*220*t):s=44100:d={seconds:.3f}",
