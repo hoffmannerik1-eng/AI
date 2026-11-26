@@ -149,7 +149,7 @@ def font(n,b=False):
     p="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if b else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     return ImageFont.truetype(p,n) if Path(p).exists() else ImageFont.load_default()
 
-def render(d,duration,fps=18):
+def render(d,duration,fps=24):
     # Vertikales Shorts-Layout: klare Szenen, animierte Stadt und gut lesbare Texteinblendungen.
     w,h=720,1280; total=max(1,math.ceil(duration*fps)); folder=OUT/"frames"; folder.mkdir(exist_ok=True)
     for p in folder.glob("frame_*.png"): p.unlink()
@@ -163,12 +163,11 @@ def render(d,duration,fps=18):
     for n in range(total):
         t=n/fps; progress=n/max(1,total-1); si=min(4,int(progress*5))
         # Weicher Himmel mit Farbverlauf.
-        im=Image.new("RGB",(w,h)); pix=im.load()
+        im=Image.new("RGB",(w,h),(8,18,34)); q=ImageDraw.Draw(im)
         for yy in range(0,470):
             k=yy/470
             col=(int(7+10*k),int(17+30*k),int(34+38*k))
-            for xx in range(w): pix[xx,yy]=col
-        q=ImageDraw.Draw(im)
+            q.line((0,yy,w,yy),fill=col)
         # Sterne und langsam ziehende Wolken.
         for k in range(42):
             x=(k*101+int(t*(3+k%3)))%720; y=(k*47)%380
@@ -244,9 +243,9 @@ def render(d,duration,fps=18):
             q.text((52,165),"WAS PASSIERT IN UNSERER STADT?",font=font(20,True),fill=(80,255,175))
             q.text((52,205),hook[:36],font=font(23,True),fill=(255,255,255))
         if t>max(0,duration-2.8):
-            q.rounded_rectangle((45,1070,675,1160),radius=18,fill=(8,35,42),outline=(95,255,175),width=2)
-            q.text((72,1090),"DEINE IDEE BAUT DIE NÄCHSTE FOLGE!",font=font(18,True),fill=(95,255,180))
-            q.text((72,1122),"Schreib deinen Bauvorschlag in die Kommentare.",font=font(14),fill=(245,250,250))
+            q.rounded_rectangle((42,790,678,850),radius=16,fill=(8,35,42),outline=(95,255,175),width=2)
+            q.text((62,800),"DEINE IDEE BAUT DIE NÄCHSTE FOLGE!",font=font(17,True),fill=(95,255,180))
+            q.text((62,825),"Welches Gebäude soll als Nächstes kommen?",font=font(14),fill=(245,250,250))
         im.save(folder/f"frame_{n:05d}.png",optimize=True)
     return folder
 
@@ -262,10 +261,10 @@ def make_video(d):
         f"aevalsrc=0.020*sin(2*PI*110*t)+0.014*sin(2*PI*164.81*t)+0.010*sin(2*PI*220*t):s=44100:d={seconds:.3f}",
         "-af",f"afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,seconds-2):.3f}:d=2",
         "-c:a","pcm_s16le",str(music)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
-    subprocess.run(["ffmpeg","-y","-framerate","18","-i",str(frames/"frame_%05d.png"),"-i",str(audio),"-i",str(music),
+    subprocess.run(["ffmpeg","-y","-framerate","24","-i",str(frames/"frame_%05d.png"),"-i",str(audio),"-i",str(music),
         "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
         "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
-        "-c:v","libx264","-preset","medium","-crf","21","-r","18","-c:a","aac","-b:a","192k",
+        "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
         "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
     return video
 
