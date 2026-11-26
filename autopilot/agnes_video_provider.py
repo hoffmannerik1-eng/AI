@@ -126,15 +126,25 @@ def generate_video(data, output_dir, destination, clip_duration=5):
             "n": 1,
         }
         print("[AGNES] Starte Cartoon-Clip " + str(index) + "/5.", flush=True)
-        try:
-            created = _request(BASE + "/v1/videos", api_key, method="POST", payload=payload, timeout=120)
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", "replace")[:700]
-            if exc.code == 401:
-                raise RuntimeError("Agnes hat den API-Schlüssel abgelehnt (401). GitHub Secret AGNES_API_KEY prüfen.")
-            if exc.code in (402, 429, 503):
-                raise RuntimeError("Agnes hat die Anfrage nicht angenommen (HTTP " + str(exc.code) + "): " + detail)
-            raise RuntimeError("Agnes-Videoanfrage fehlgeschlagen (HTTP " + str(exc.code) + "): " + detail)
+        # Agnes kann bei hoher Auslastung mit video_queue_full/503 antworten.
+        # Dann mit wachsendem Abstand erneut versuchen; keine Ersatz-KI verwenden.
+        created = None
+        for attempt in range(1, 7):
+            try:
+                created = _request(BASE + "/v1/videos", api_key, method="POST", payload=payload, timeout=120)
+                break
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", "replace")[:700]
+                if exc.code == 401:
+                    raise RuntimeError("Agnes hat den API-Schlüssel abgelehnt (401). GitHub Secret AGNES_API_KEY prüfen.")
+                if exc.code == 503 and attempt < 6 and "video_queue_full" in detail:
+                    wait = min(90, attempt * 20)
+                    print("[AGNES] Warteschlange voll; neuer Versuch " + str(attempt) + "/5 in " + str(wait) + " Sekunden.", flush=True)
+                    time.sleep(wait)
+                    continue
+                if exc.code in (402, 429, 503):
+                    raise RuntimeError("Agnes hat die Anfrage nicht angenommen (HTTP " + str(exc.code) + "): " + detail)
+                raise RuntimeError("Agnes-Videoanfrage fehlgeschlagen (HTTP " + str(exc.code) + "): " + detail)
         video_id = created.get("video_id") or created.get("id") or created.get("task_id")
         if not video_id:
             raise RuntimeError("Agnes lieferte keine video_id zurück: " + str(created)[:500])
