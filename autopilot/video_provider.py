@@ -133,7 +133,7 @@ def generate_video(data, output_dir, destination, clip_duration):
         normalized.append(normalized_path)
 
     concat_file = folder / "concat.txt"
-    concat_file.write_text("".join("file '" + str(p.resolve()) + "'\\n" for p in normalized), encoding="utf-8")
+    concat_file.write_text("".join("file '" + str(p.resolve()) + "'\n" for p in normalized), encoding="utf-8")
     combined = Path(destination)
     subprocess.run([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
