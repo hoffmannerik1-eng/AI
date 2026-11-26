@@ -1,30 +1,32 @@
-name: AI ERIK Autopilot
+name: AI ERIK Stadt-Autopilot
 
 on:
   workflow_dispatch:
     inputs:
       upload_public:
-        description: "Video nach der Erstellung öffentlich auf YouTube hochladen"
+        description: "Öffentlichen Upload nach Freigabe durch deine Eltern"
         required: true
         type: boolean
         default: false
   schedule:
-    - cron: "0 16 * * *"
+    - cron: "0 * * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: ai-erik-autopilot
+  group: ai-erik-stadt-autopilot
   cancel-in-progress: false
 
 jobs:
-  create-and-publish:
+  create-city-episode:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -35,23 +37,32 @@ jobs:
           sudo apt-get install -y ffmpeg
       - name: Install dependencies
         run: pip install -r autopilot/requirements.txt
-      - name: Create Short (upload only when dry-run is disabled)
+      - name: Create city episode
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: openrouter/free
-          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          YOUTUBE_PRIVACY_STATUS: public
-          DRY_RUN: ${{ github.event_name == 'schedule' || !inputs.upload_public }}
-          MAX_DAILY_VIDEOS: "1"
+          YOUTUBE_CLIENT_ID: \${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: \${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: \${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_PRIVACY_STATUS: private
+          DRY_RUN: \${{ github.event_name == 'schedule' || !inputs.upload_public }}
         run: python autopilot/main.py
-      - name: Save video if upload setup is incomplete or for review
+      - name: Save evolving city state
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add autopilot/city_state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update AI city world state"
+            git push
+          fi
+      - name: Save episode for review
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-erik-autopilot-output
+          name: ai-erik-stadtfolge-\${{ github.run_number }}
           path: autopilot/output/
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
