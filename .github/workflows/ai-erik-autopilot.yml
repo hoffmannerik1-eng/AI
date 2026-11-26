@@ -31,6 +31,8 @@ jobs:
           sudo apt-get install -y ffmpeg
       - name: Install dependencies
         run: pip install -r autopilot/requirements.txt
+      - name: Check Python syntax
+        run: python -m py_compile autopilot/main.py
       - name: Create city episode
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
