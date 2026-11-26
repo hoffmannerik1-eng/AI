@@ -39,14 +39,14 @@ jobs:
         run: pip install -r autopilot/requirements.txt
       - name: Create city episode
         env:
-          GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
-          OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: openrouter/free
-          YOUTUBE_CLIENT_ID: \${{ secrets.YOUTUBE_CLIENT_ID }}
-          YOUTUBE_CLIENT_SECRET: \${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          YOUTUBE_REFRESH_TOKEN: \${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PRIVACY_STATUS: private
-          DRY_RUN: \${{ github.event_name == 'schedule' || !inputs.upload_public }}
+          DRY_RUN: ${{ github.event_name == 'schedule' || !inputs.upload_public }}
         run: python autopilot/main.py
       - name: Save evolving city state
         if: success()
@@ -62,7 +62,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-erik-stadtfolge-\${{ github.run_number }}
+          name: ai-erik-stadtfolge-${{ github.run_number }}
           path: autopilot/output/
           if-no-files-found: ignore
           retention-days: 7
