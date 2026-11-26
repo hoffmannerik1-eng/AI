@@ -69,31 +69,34 @@ def generate_video(data, output_dir, destination, clip_duration):
     folder = Path(output_dir) / "magic_hour_clips"
     folder.mkdir(parents=True, exist_ok=True)
 
-    shot_directions = [
-        "OPENING ACTION SHOT: begin close to the main character in the middle of the surprising event; reveal the central mystery.",
-        "FOLLOW SHOT: track the main character through the scene while the key action unfolds clearly.",
-        "CLOSE DETAIL SHOT: focus on the important object, clue or expression; use a gentle cinematic push-in.",
-        "DYNAMIC SHOT: reveal the obstacle or surprising turn with a smooth camera move.",
-        "CLOSING SHOT: finish on the character reaction or the story final reveal.",
+    shot_directions = data.get("edit_plan") or [
+        "Begin with a strong visual hook and immediate action.",
+        "Follow the main action with a clear moving camera.",
+        "Use a close detail shot for the important clue or reaction.",
+        "Reveal the obstacle or twist with a purposeful transition.",
+        "Finish on the strongest final reveal or reaction."
     ]
 
     normalized = []
     for index, scene in enumerate(scenes, start=1):
         character_bible = data.get("characters", [])
-        visual_style = str(data.get("visual_style", "High-end colorful 3D animated cartoon feature film"))
+        visual_style = str(data.get("visual_style", "High-quality animated short in a style chosen for the story"))
+        edit_direction = shot_directions[index - 1] if len(shot_directions) >= index else "Use a purposeful cinematic cut."
+        sound_plan = data.get("sound_plan") or []
+        sound_direction = sound_plan[index - 1] if len(sound_plan) >= index else "Use original, rights-cleared sound design."
         prompt = (
-            "Create a fully animated vertical 9:16 ROBLOX STORY SHORT scene. "
-            "MANDATORY STYLE: recognizable Roblox-like block avatars with cuboid head, cuboid torso, block arms and legs, simple Roblox joints, smooth slightly plastic surfaces, simple textures and clean low-poly 3D geometry. "
-            "Characters visibly perform human-like Roblox actions: walk, run, turn, sit, reach, grab, point, react and interact with each other and objects. Use simple expressive Roblox faces. "
-            "Show the actual story event, not static posing or a slideshow. Keep the exact same character identity, face, hair, proportions, colors and clothing across all five scenes. "
-            "Choose location, background, props, weather, time of day and lighting from THIS story scene; do not default to suburban streets or bicycles unless the story requires them. "
-            "Use a third-person camera that follows the action. NO subtitles, captions, readable text, letters, title cards, logos or watermarks. NO live action, photorealism or other animation style. "
+            "Create a fully animated vertical 9:16 short-video scene in the exact style described. "
+            "Do not force Roblox, block avatars or one fixed animation style unless the selected visual style specifically requests it. "
+            "Show the actual event, not static posing or a slideshow. Keep recurring characters, objects, colors and locations consistent across all scenes. "
+            "Choose location, props, weather, time of day and lighting from THIS story scene. "
+            "No subtitles, captions, readable text, letters, title cards, logos or watermarks. "
             "VISUAL STYLE: " + visual_style + ". "
-            "CHARACTER DESIGNS (identical in every scene): " + str(character_bible) + ". "
+            "CHARACTER DESIGNS: " + str(character_bible) + ". "
             "EPISODE: " + str(data.get("title", "")) + ". STORY: " + str(data.get("story", "")) + ". "
             "THIS SCENE AND ITS VISIBLE ACTION: " + str(scene) + ". "
-            "CAMERA DIRECTION: " + shot_directions[index - 1] + " "
-            "Animate the action continuously with clear body movement and interaction. "
+            "EDIT AND CAMERA DIRECTION: " + str(edit_direction) + ". "
+            "SOUND DESIGN INTENTION (audio is mixed later): " + str(sound_direction) + ". "
+            "Animate the action continuously with clear movement and interaction. "
         )[:3500]
 
         try:
