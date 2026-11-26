@@ -1,0 +1,24 @@
+name: Validate AI ERIK Python
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "autopilot/**/*.py"
+      - "autopilot/*.py"
+      - ".github/workflows/validate-python.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile all autopilot Python files
+        run: python -m py_compile autopilot/main.py autopilot/agnes_video_provider.py autopilot/video_provider.py
