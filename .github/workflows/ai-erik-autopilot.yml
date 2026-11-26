@@ -37,6 +37,9 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
+          RUNWAY_MODEL: grok_imagine_1_5_lite
+          VIDEO_DAILY_BUDGET_USD: '1.00'
           OPENROUTER_MODEL: openrouter/free
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
@@ -45,7 +48,7 @@ jobs:
           DRY_RUN: 'false'
         run: python autopilot/main.py
       - name: Save evolving city state
-        if: success()
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
