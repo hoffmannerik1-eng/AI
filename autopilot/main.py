@@ -72,6 +72,31 @@ def get_comments(state):
         log(f"Kommentare konnten nicht gelesen werden: {str(e)[:180]}")
         return []
 
+def research_shorts_trends():
+    """Sammelt öffentlich auffindbare aktuelle YouTube-Such-RSS-Titel als Inspirationssignale."""
+    try:
+        import feedparser
+        import urllib.parse
+        queries=["Roblox Shorts story","Roblox Shorts funny","Roblox animation Shorts"]
+        observations=[]
+        for q in queries:
+            url="https://www.youtube.com/feeds/videos.xml?search_query="+urllib.parse.quote(q)
+            req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 AI-ERIK trend research"})
+            with urllib.request.urlopen(req,timeout=12) as response:
+                feed=feedparser.parse(response.read())
+            for entry in feed.entries[:6]:
+                title=re.sub(r"\\s+"," ",entry.get("title","")).strip()
+                if title: observations.append({"query":q,"title":title[:180]})
+        unique=[]; seen=set()
+        for item in observations:
+            key=item["title"].lower()
+            if key not in seen: seen.add(key); unique.append(item)
+        log(f"Trend-Inspiration: {len(unique)} aktuelle Such-RSS-Titel gesammelt (kein verifizierter Sound/View-Ranking).")
+        return unique[:18]
+    except Exception as e:
+        log(f"Trend-Recherche nicht verfügbar: {str(e)[:160]}")
+        return []
+
 def local_story_fallback(state, comments):
     """Erstellt ohne externe Text-KI eine vollständige, sichere Story mit fünf Bildszenen."""
     episode=int(state.get("episode",0))+1
@@ -117,14 +142,14 @@ def local_story_fallback(state, comments):
         "hashtags":["#Roblox","#Shorts","#Cartoon","#Story","#AI"]
     }
 
-def generate(state,comments):
+def generate(state,comments,trend_data=None):
     previous=state.get("history",[])[-30:]
     previous_stories=[{"episode":x.get("episode"),"title":x.get("title"),"story":x.get("story",""),"script":x.get("script","")[:700]} for x in previous]
     prompt=f"""Du bist Autor und Erzähler einer hochwertigen deutschen YouTube-Shorts-Serie. Es geht NICHT um eine Stadt, keinen Stadtaufbau und keine Gebäude. Erfinde spannende, eigenständige Geschichten mit interessanten Figuren und abwechslungsreichen Schauplätzen.
 Jede Folge ist eine neue Episode mit einem völlig neuen Ereignis. Wiederhole niemals frühere Geschichten, Figuren-Konstellationen, Konflikte, Überraschungen, Hooks, Titel oder Szenen. Lies die letzten Episoden und vermeide auch nur leicht umformulierte Wiederholungen. Wechsle bewusst zwischen Abenteuer, Humor, Rätsel, Natur, Technik, Weltraum, Freundschaft, Geheimnissen und anderen harmlosen Themen.
 VIDEO-AUFBAU: Beginne sofort mitten in einem spannenden Moment. Stelle eine Hauptfigur und ihr Ziel vor. Entwickle eine klare Handlung mit Hindernis und überraschender Wendung. Gib der Geschichte ein befriedigendes Ende oder einen starken Cliffhanger. Keine Begrüßung und keine lange Einleitung.
 SHORTS-EDITING: Plane einen dynamischen, aber nicht hektischen Schnitt: in den ersten 1-2 Sekunden ein klarer visueller Hook, danach abwechslungsreiche Kameradistanzen, gezielte kurze Zooms bei Überraschungen, passend getimte Reaktionen, Bewegungen und Übergänge zwischen den fünf Szenen. Vermeide Leerlauf, Wiederholungen, übermäßige Effekte und generische KI-Floskeln. Die Handlung soll eigenständig und glaubwürdig erzählt werden und nicht einen konkreten Creator, dessen Stimme, identische Edit-Signatur oder ein bestimmtes virales Video kopieren.
-TREND-ORIENTIERUNG: Wenn keine zuverlässigen Live-Trenddaten verfügbar sind, behaupte nicht, aktuelle Trends oder Sounds analysiert zu haben. Entwickle stattdessen trendgeeignete Hooks, kurze Story-Strukturen und passende originale Sounddesign-Hinweise. Nutze keine urheberrechtlich geschützten viralen Sounds ungeprüft; ein offizieller Shorts-Remix muss gegebenenfalls manuell über YouTube erfolgen.
+TREND-ORIENTIERUNG: Analysiere die Trend-Inspiration auf Hook-Muster, Themen, Timing und Formate, aber kopiere weder Titel noch Story, Creator, Edit-Signatur oder konkretes Video. Erfinde eine eigenständige Story mit aktuellem Gefühl. Plane in den Szenen sinnvolle Schnittpunkte, kurze Zooms, Bewegungsakzente und originale Sounddesign-Hinweise (z.B. whoosh, impact, ambience), ohne virale Sounds ungeprüft zu übernehmen. Keine Behauptungen über verifizierte Views, Rankings oder Trendsounds, wenn diese Daten nicht geliefert wurden.
 Zuschauerkommentare dürfen unverbindliche Ideen für spätere Geschichten sein. Keine echten Personen, privaten Daten oder gefährlichen Handlungen.
 LETZTE FOLGEN – NICHT WIEDERHOLEN:
 {json.dumps(previous_stories,ensure_ascii=False)}
