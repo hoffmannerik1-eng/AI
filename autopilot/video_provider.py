@@ -79,27 +79,30 @@ def generate_video(data, output_dir, destination, clip_duration):
 
     normalized = []
     for index, scene in enumerate(scenes, start=1):
+        character_bible = data.get("characters", [])
+        visual_style = str(data.get("visual_style", "High-end colorful 3D animated cartoon feature film"))
         prompt = (
-            "Create one original cinematic vertical 9:16 short-film shot for episode "
-            + str(data.get("episode", 1))
-            + " of an original German fictional story. Keep the same main characters, "
-            "clothing, visual style and story continuity across all five scenes. "
-            "EPISODE: "
-            + str(data.get("title", ""))
-            + ". STORY: "
-            + str(data.get("story", ""))
-            + ". SCENE "
-            + str(index)
-            + " ACTION: "
-            + str(scene)
-            + ". CAMERA: "
-            + shot_directions[index - 1]
-            + " Show this exact action clearly. Cinematic realistic environments, "
-            "natural character movement, expressive faces, depth of field, "
-            "professional camera work and believable lighting. "
-            "Do not introduce unrelated characters or change the story. "
-            "No city-building simulation, text, subtitles, labels, logos or watermarks."
-        )[:1800]
+            "Create a HIGH-QUALITY FULLY ANIMATED 3D CARTOON FILM shot, vertical 9:16, "
+            "for a German YouTube Short. This must look like a polished theatrical family "
+            "animation: appealing stylized cartoon characters, expressive large eyes, "
+            "clear readable facial emotions, appealing rounded shapes, rich colorful "
+            "materials, beautifully designed cartoon environments, squash-and-stretch "
+            "character motion, lively gestures, dynamic action, cinematic composition, "
+            "smooth camera movement and professional animated-film lighting. "
+            "It must be unmistakably CARTOON ANIMATION, NOT live action, NOT photorealism, "
+            "NOT real human actors, NOT a slideshow, NOT still illustrations. "
+            "VISUAL STYLE BIBLE: " + visual_style + ". "
+            "CHARACTER BIBLE (keep exact same designs, face, body proportions, colors "
+            "and clothes in every scene): " + str(character_bible) + ". "
+            "EPISODE: " + str(data.get("title", "")) + ". "
+            "STORY: " + str(data.get("story", "")) + ". "
+            "SCENE " + str(index) + " ACTION: " + str(scene) + ". "
+            "CAMERA: " + shot_directions[index - 1] + " "
+            "Show the described action clearly with visible character animation. "
+            "Keep character identity and art direction consistent with the other scenes. "
+            "No city-building simulation, no captions, no subtitles, no text, no logos, "
+            "no watermarks, no realistic footage."
+        )[:3500]
 
         try:
             result = client.v1.text_to_video.generate(
