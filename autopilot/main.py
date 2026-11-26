@@ -74,31 +74,16 @@ def get_comments(state):
 
 def generate(state,comments):
     previous=state.get("history",[])[-30:]
-    previous_stories=[{
-        "episode":item.get("episode"),
-        "title":item.get("title"),
-        "story":item.get("story",""),
-        "change":item.get("change",""),
-        "script":item.get("script","")[:700]
-    } for item in previous]
-    prompt=f"""Du bist Autor, Regisseur und Erzähler einer hochwertigen, fortlaufenden deutschen YouTube-Shorts-Serie über EINE lebendige fiktive Stadt.
-WICHTIG: Jede Folge ist eine NEUE, eigenständige Episode und darf keine frühere Folge nacherzählen oder wiederholen. Lies die Liste der letzten Folgen genau. Verwende NIEMALS denselben Vorfall, dieselbe Entdeckung, denselben Konflikt, denselben Hook, dieselbe Pointe oder dieselbe Szenenfolge erneut. Auch nur leicht umformulierte Wiederholungen sind verboten. Jede Folge braucht einen neuen konkreten Anlass, neue Handlung, andere Schauplätze innerhalb der bestehenden Stadt und eine eigene Auflösung. Wechsle bewusst zwischen Alltag, lustigen Überraschungen, kleinen Rätseln, besonderen Ereignissen, Wetter, Tieren, Verkehr, Festen, Nachbarschaft und anderen harmlosen Stadtgeschichten. Nicht immer Alarm, Baustelle, verschwundene Dinge oder Stromausfall.
-AUFBAU WIE EIN GUTES YOUTUBE-VIDEO:
-1. Starte sofort mitten in einem interessanten Moment in der Stadt: Was passiert HEUTE gerade?
-2. Erzähle dann, wie die Stadtbewohner es bemerken und was sie unternehmen.
-3. Entwickle eine klare kleine Geschichte mit überraschendem, aber nachvollziehbarem Verlauf.
-4. Beende die Geschichte mit einem befriedigenden Ergebnis oder einer neuen offenen Frage.
-5. Die letzte Frage darf die Zuschauer um EINE konkrete Idee für ein zukünftiges Gebäude oder Upgrade bitten.
-Die Stadt soll sich wie eine echte fortlaufende Serie anfühlen: gleiche Stadt und bekannte Gebäude, aber täglich/stündlich ein anderes Erlebnis. Beginne nicht jede Folge mit "Es war ein normaler Morgen", "Heute in unserer Stadt" oder derselben Satzform. Variiere Erzählperspektive, Tageszeit, Wetter, Tempo und Einstieg.
-STADTREGELN: Zu Beginn gibt es AUSSCHLIESSLICH ein Rathaus. Die Stadt darf baulich nur durch einen passenden, konkreten Zuschauerkommentar wachsen. Baue oder verbessere höchstens 2 Dinge pro Folge und nur, wenn ein Kommentar genau diese Sache vorschlägt. Kommentare wie "cool" oder "weiter" sind KEIN Bauvorschlag. Ohne passenden Baukommentar bleiben alle Gebäude exakt unverändert; erzähle dann eine spannende Geschichte mit den vorhandenen Orten. Ignoriere private, beleidigende, gefährliche oder unpassende Wünsche. Keine echten Personen oder privaten Daten.
+    previous_stories=[{"episode":x.get("episode"),"title":x.get("title"),"story":x.get("story",""),"script":x.get("script","")[:700]} for x in previous]
+    prompt=f"""Du bist Autor und Erzähler einer hochwertigen deutschen YouTube-Shorts-Serie. Es geht NICHT um eine Stadt, keinen Stadtaufbau und keine Gebäude. Erfinde spannende, eigenständige Geschichten mit interessanten Figuren und abwechslungsreichen Schauplätzen.
+Jede Folge ist eine neue Episode mit einem völlig neuen Ereignis. Wiederhole niemals frühere Geschichten, Figuren-Konstellationen, Konflikte, Überraschungen, Hooks, Titel oder Szenen. Lies die letzten Episoden und vermeide auch nur leicht umformulierte Wiederholungen. Wechsle bewusst zwischen Abenteuer, Humor, Rätsel, Natur, Technik, Weltraum, Freundschaft, Geheimnissen und anderen harmlosen Themen.
+VIDEO-AUFBAU: Beginne sofort mitten in einem spannenden Moment. Stelle eine Hauptfigur und ihr Ziel vor. Entwickle eine klare Handlung mit Hindernis und überraschender Wendung. Gib der Geschichte ein befriedigendes Ende oder einen starken Cliffhanger. Keine Begrüßung und keine lange Einleitung.
+Zuschauerkommentare dürfen unverbindliche Ideen für spätere Geschichten sein. Keine echten Personen, privaten Daten oder gefährlichen Handlungen.
 LETZTE FOLGEN – NICHT WIEDERHOLEN:
 {json.dumps(previous_stories,ensure_ascii=False)}
-AKTUELLER STADTSTAND:
-{json.dumps(state,ensure_ascii=False)}
-NEUE ZUSCHAUERKOMMENTARE:
+NEUE ZUSCHAUERKOMMENTARE ALS OPTIONALE IDEEN:
 {json.dumps(comments,ensure_ascii=False)}
-Erstelle jetzt Folge {state.get('episode',0)+1}. Das Skript muss 85-115 deutsche Wörter haben und sich natürlich anhören, als würde ein guter YouTube-Erzähler die Geschichte spannend erzählen. Die ersten 2 Sekunden brauchen einen individuellen Hook. Jede der genau 5 Szenen muss eine andere, konkrete visuelle Handlung aus DIESER Folge zeigen und zum gesprochenen Skript passen. Nicht fünfmal dieselbe Stadtansicht. Szenen sollen Kamera, Ort und Aktion konkret beschreiben. Der Titel muss neugierig machen und darf keinem früheren Titel ähneln. Antworte NUR mit einem vollständigen JSON-Objekt:
-city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), description (Hinweis auf fiktive KI-Stadt), script, story (1-2 Sätze: was in dieser Folge wirklich neu passiert; keine allgemeine Zusammenfassung), scenes (genau 5 kurze Szenen), buildings (vollständige Liste max 18; jedes Objekt name,type aus rathaus/haus/hochhaus/cafe/schule/park/shop/feuerwehr/polizei/krankenhaus/bahnhof/stadion/schwimmbad/bruecke, level 1-3, x und y ganze Zahlen -3 bis 3; keine doppelten Koordinaten), population (50-50000), change_summary, hashtags (3-5)."""
+Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wörter haben. Die ersten zwei Sekunden brauchen einen individuellen Hook. Erstelle genau 5 visuelle Szenen, die die Handlung in der richtigen Reihenfolge zeigen. Jede Szene braucht einen konkreten Schauplatz, Figuren und eine sichtbare Aktion. Keine Stadt- oder Gebäudebau-Simulation. Titel kurz, neugierig und nicht ähnlich zu früheren Titeln. Antworte nur mit JSON mit diesen Feldern: title (beginnt mit Folge {state.get('episode',0)+1}:), description (kurze Beschreibung als fiktive KI-Geschichte), script, story (1-2 Sätze über das neue Ereignis), scenes (genau 5 kurze visuelle Szenen), hashtags (3-5)."""
     def parse_json(text):
         text=(text or "").strip()
         if text.startswith("```"):
@@ -114,9 +99,8 @@ city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), descri
             raise ValueError("KI-Ausgabe unvollständig")
         if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5:
             raise ValueError("Es müssen genau fünf Szenen sein")
-        if not isinstance(obj["buildings"],list) or not 45<=len(str(obj["script"]).split())<=140:
-            raise ValueError("Gebäude oder Skript ungültig")
-        obj["buildings"]=obj["buildings"][:18]
+        if not 80<=len(str(obj["script"]).split())<=150:
+            raise ValueError("Skript muss zwischen 80 und 150 Wörtern haben")
         return obj
 
     # Gemini versuchen; bei Quota-Fehler automatisch zu OpenRouter wechseln.
@@ -187,7 +171,6 @@ city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), descri
                         raise ValueError("Modell lieferte leeren Inhalt")
                     obj=check(parse_json(raw))
                     log(f"OpenRouter-Modell {model} hat die Stadtfolge erstellt")
-                    if not comments: obj["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
                     return obj
                 except Exception as e:
                     detail=str(e)
@@ -209,102 +192,44 @@ def font(n,b=False):
     return ImageFont.truetype(p,n) if Path(p).exists() else ImageFont.load_default()
 
 def render(d,duration,fps=24):
-    # Vertikales Shorts-Layout: klare Szenen, animierte Stadt und gut lesbare Texteinblendungen.
+    # Story-Video ohne Stadtkarte, Gebäude oder Einwohneranzeige.
     w,h=720,1280; total=max(1,math.ceil(duration*fps)); folder=OUT/"frames"; folder.mkdir(exist_ok=True)
     for p in folder.glob("frame_*.png"): p.unlink()
-    colors={"rathaus":(75,145,205),"haus":(80,180,130),"hochhaus":(80,115,200),"cafe":(210,135,80),"schule":(210,185,75),"park":(55,145,85),"shop":(175,95,145),"feuerwehr":(195,65,65),"polizei":(70,105,180),"krankenhaus":(205,220,225),"bahnhof":(120,130,150),"stadion":(65,155,135),"schwimmbad":(50,155,215),"bruecke":(140,125,105)}
-    def pt(x,y,z=0,cam=0):
-        return (360+(x-y)*55+cam,690+(x+y)*28-z)
-    def poly(draw,pts,fill,outline=(15,35,45)):
-        draw.polygon(pts,fill=fill,outline=outline)
-    scenes=d.get("scenes",["Willkommen in unserer Stadt"]*5)
-    hook=str(scenes[0])[:75]
-    for n in range(total):
-        t=n/fps; progress=n/max(1,total-1); si=min(4,int(progress*5))
-        # Weicher Himmel mit Farbverlauf.
-        im=Image.new("RGB",(w,h),(8,18,34)); q=ImageDraw.Draw(im)
-        for yy in range(0,470):
-            k=yy/470
-            col=(int(7+10*k),int(17+30*k),int(34+38*k))
-            q.line((0,yy,w,yy),fill=col)
-        # Sterne und langsam ziehende Wolken.
-        for k in range(42):
-            x=(k*101+int(t*(3+k%3)))%720; y=(k*47)%380
-            q.ellipse((x,y,x+2,y+2),fill=(95,150,175))
-        for k in range(4):
-            cx=(k*220+int(t*8))%900-90; cy=170+k%2*85
-            q.ellipse((cx,cy,cx+100,cy+18),fill=(19,43,62))
-            q.ellipse((cx+25,cy-10,cx+85,cy+20),fill=(19,43,62))
-        # Mond / Lichtschein.
-        q.ellipse((520,95,635,210),fill=(28,67,88),outline=(80,180,190),width=3)
-        q.ellipse((545,105,625,185),fill=(150,215,205))
-        # Header mit Folge- und Serienbranding.
-        q.rounded_rectangle((28,25,692,118),radius=22,fill=(8,24,40),outline=(55,205,150),width=2)
-        q.text((52,43),"AI ERIK  /  STADT-UPDATE",font=font(24,True),fill=(80,255,175))
-        q.text((52,79),f"{d['city_name']}   •   FOLGE {d['episode']}",font=font(17),fill=(205,225,230))
-        # Leuchtende Stadtfläche und isometrische Straßen.
-        poly(q,[(360,410),(690,585),(360,790),(30,585)],(34,72,78),outline=(65,135,130))
-        for k in range(-3,4):
-            q.line((pt(k,-3),pt(k,3)),fill=(64,112,108),width=2)
-            q.line((pt(-3,k),pt(3,k)),fill=(64,112,108),width=2)
-        # Kleine Straßenmarkierungen.
-        for k in range(7):
-            xx=90+k*90; yy=590+int(15*math.sin(t*1.5+k))
-            q.ellipse((xx,yy,xx+4,yy+4),fill=(115,190,160))
-        # Gebäude und Parks.
-        cam=int(5*math.sin(t*.35))
-        for b in sorted(d["buildings"],key=lambda z:int(z.get("x",0))+int(z.get("y",0))):
-            x,y=pt(int(b.get("x",0)),int(b.get("y",0)),cam=cam); typ=b.get("type","haus"); lev=max(1,min(3,int(b.get("level",1))))
-            if typ=="park":
-                poly(q,[(x,y-12),(x+36,y+6),(x,y+25),(x-36,y+6)],(45,135,78))
-                for tx in (-18,12):
-                    q.ellipse((x+tx-13,y-47,x+tx+13,y-21),fill=(70,190,100))
-                    q.rectangle((x+tx-4,y-24,x+tx+4,y+8),fill=(110,75,45))
-                continue
-            if typ=="bruecke":
-                poly(q,[(x-42,y),(x,y+21),(x+42,y),(x,y-21)],colors[typ]); continue
-            col=colors.get(typ,colors["haus"]); height=36+lev*22; wd=34
-            left=tuple(int(v*.62) for v in col); top=tuple(min(255,int(v*1.18)) for v in col)
-            poly(q,[(x-wd,y-height),(x,y-height+20),(x,y+20),(x-wd,y)],left)
-            poly(q,[(x,y-height+20),(x+wd,y-height),(x+wd,y),(x,y+20)],col)
-            poly(q,[(x,y-height-20),(x+wd,y-height),(x,y-height+20),(x-wd,y-height)],top)
-            # Leuchtende Fenster mit leichtem Flackern.
-            for row in range(lev):
-                yy=y-height+32+row*22
-                if yy<y-3:
-                    glow=245 if (n//9+row+int(x))%7 else 185
-                    q.rectangle((x-25,yy,x-17,yy+10),fill=(glow,225,145))
-                    q.rectangle((x+13,yy+5,x+21,yy+15),fill=(glow,225,145))
-        # Bewegte Lichtpunkte als kleine Stadtfahrzeuge.
-        for j in range(8):
-            x=70+((j*83+int(t*34))%580); y=560+int(75*math.sin(t*.8+j))
-            q.ellipse((x-3,y-3,x+4,y+4),fill=(100,255,190))
-        # Szenenkarte mit stärkerem Kontrast und Textumbruch.
-        q.rounded_rectangle((28,865,692,1150),radius=26,fill=(7,22,38),outline=(55,220,160),width=3)
-        q.text((55,892),f"STADTENTWICKLUNG  {si+1}/5",font=font(18,True),fill=(80,255,175))
-        words=str(scenes[si]).split(); lines=[]; line=""
+    scenes=d.get("scenes",["Eine neue Geschichte beginnt"]*5); title=str(d.get("title","Eine neue Geschichte")); hook=str(d.get("script",""))[:85]
+    def wrap(value,limit):
+        words=str(value).split(); lines=[]; line=""
         for word in words:
-            if len(line)+len(word)+1>27:
+            if len(line)+len(word)+1>limit:
                 if line: lines.append(line)
                 line=word
             else: line=(line+" "+word).strip()
         if line: lines.append(line)
-        yy=940
-        for line in lines[:3]:
-            q.text((55,yy),line,font=font(30,True),fill=(248,252,250)); yy+=43
-        q.text((55,1090),"EINWOHNER  "+f"{int(d['population']):,}".replace(",","."),font=font(18,True),fill=(170,220,215))
-        # Fortschrittsanzeige.
-        q.rounded_rectangle((30,1190,690,1202),radius=6,fill=(30,55,68))
-        q.rounded_rectangle((30,1190,30+int(660*progress),1202),radius=6,fill=(65,245,165))
-        # Schneller, klarer Einstieg und Kommentar-Aufruf am Ende.
-        if t<2.4:
-            q.rounded_rectangle((28,145,692,265),radius=22,fill=(7,24,40),outline=(90,255,180),width=3)
-            q.text((52,165),"WAS PASSIERT IN UNSERER STADT?",font=font(20,True),fill=(80,255,175))
-            q.text((52,205),hook[:36],font=font(23,True),fill=(255,255,255))
-        if t>max(0,duration-2.8):
-            q.rounded_rectangle((42,790,678,850),radius=16,fill=(8,35,42),outline=(95,255,175),width=2)
-            q.text((62,800),"DEINE IDEE BAUT DIE NÄCHSTE FOLGE!",font=font(17,True),fill=(95,255,180))
-            q.text((62,825),"Welches Gebäude soll als Nächstes kommen?",font=font(14),fill=(245,250,250))
+        return lines
+    for n in range(total):
+        t=n/fps; progress=n/max(1,total-1); si=min(4,int(progress*5))
+        im=Image.new("RGB",(w,h),(7,13,28)); q=ImageDraw.Draw(im)
+        for yy in range(h):
+            k=yy/h; q.line((0,yy,w,yy),fill=(int(7+8*k),int(14+10*k),int(29+20*k)))
+        for j in range(70):
+            x=(j*97+int(t*(5+j%4)))%w; y=(j*61)%h; rr=1+(j%3)
+            q.ellipse((x-rr,y-rr,x+rr,y+rr),fill=(35,75+(j%5)*12,105+(j%4)*18))
+        shift=int(24*math.sin(t*.7)); q.ellipse((420+shift,170,760+shift,510),fill=(13,35,59)); q.ellipse((-180-shift,650,220-shift,1080),fill=(12,29,50))
+        q.rounded_rectangle((28,28,692,145),radius=24,fill=(8,22,40),outline=(65,210,165),width=2)
+        q.text((52,48),"AI ERIK  /  STORY",font=font(23,True),fill=(80,255,175))
+        for idx,line in enumerate(wrap(title,42)[:2]): q.text((52,88+idx*29),line,font=font(19,True),fill=(245,250,255))
+        q.rounded_rectangle((30,300,690,940),radius=30,fill=(9,24,43),outline=(58,135,155),width=3)
+        q.text((60,340),f"KAPITEL  {si+1}/5",font=font(20,True),fill=(80,255,175)); q.line((60,390,660,390),fill=(55,105,125),width=2)
+        yy=450
+        for line in wrap(scenes[si],31)[:8]:
+            q.text((60,yy),line,font=font(29,True),fill=(248,250,255)); yy+=55
+        q.rounded_rectangle((30,1190,690,1204),radius=7,fill=(27,49,67)); q.rounded_rectangle((30,1190,30+int(660*progress),1204),radius=7,fill=(65,245,165))
+        if t<2.5:
+            q.rounded_rectangle((30,175,690,270),radius=20,fill=(8,28,46),outline=(70,235,175),width=2)
+            q.text((55,193),"WAS PASSIERT ALS NÄCHSTES?",font=font(19,True),fill=(80,255,175))
+            for idx,line in enumerate(wrap(hook,43)[:2]): q.text((55,225+idx*27),line,font=font(17,True),fill=(255,255,255))
+        if t>max(0,duration-2.5):
+            q.rounded_rectangle((55,1000,665,1080),radius=18,fill=(8,32,45),outline=(75,225,170),width=2)
+            q.text((82,1022),"Welche Geschichte soll als Nächstes kommen?",font=font(18,True),fill=(235,250,245))
         im.save(folder/f"frame_{n:05d}.png",optimize=True)
     return folder
 
@@ -376,15 +301,21 @@ def upload(video,d):
     return r.get("id")
 
 def main():
-    log("AI ERIK STADT-AUTOPILOT gestartet"); state=load_state(); ideas=get_comments(state)
-    d=generate(state,ideas); d["episode"]=int(state.get("episode",0))+1
-    log(f"{d['city_name']} | Folge {d['episode']} | {len(d['buildings'])} Gebäude")
-    video=make_video(d); verify_video(video); dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
+    log("AI ERIK STORY-AUTOPILOT gestartet")
+    state=load_state()
+    ideas=get_comments(state)
+    d=generate(state,ideas)
+    d["episode"]=int(state.get("episode",0))+1
+    log(f"Neue Geschichte | Folge {d['episode']} | {d['title']}")
+    video=make_video(d)
+    verify_video(video)
+    dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
     vid=None if dry else upload(video,d)
-    state.update({"city_name":d["city_name"],"episode":d["episode"],"population":d["population"],"buildings":d["buildings"]})
-    state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"story":d.get("story",""),"script":d.get("script",""),"change":d["change_summary"],"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
-    state["history"]=state["history"][-100:]; STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
-    (OUT/"latest.json").write_text(json.dumps({"title":d["title"],"episode":d["episode"],"city_name":d["city_name"],"video_id":vid,"change":d["change_summary"]},ensure_ascii=False,indent=2),encoding="utf-8")
-    log("Folge fertig; Stadtstand gespeichert. "+("Video wartet als Artifact auf Freigabe." if dry else "Video wurde hochgeladen."))
+    state.update({"episode":d["episode"]})
+    state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"story":d.get("story",""),"script":d.get("script",""),"change":d.get("story",""),"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
+    state["history"]=state["history"][-100:]
+    STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
+    (OUT/"latest.json").write_text(json.dumps({"title":d["title"],"episode":d["episode"],"video_id":vid,"story":d.get("story","")},ensure_ascii=False,indent=2),encoding="utf-8")
+    log("Geschichte fertig; Episodenverlauf gespeichert. "+("Video wartet als Artifact auf Freigabe." if dry else "Video wurde hochgeladen."))
 
 if __name__=="__main__": main()
