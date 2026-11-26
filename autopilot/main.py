@@ -126,7 +126,7 @@ def font(size, bold=False):
     return ImageFont.load_default()
 
 def render_animated_frames(data, duration, fps=18):
-    """Erzeugt eigenständige Motion-Graphics-Szenen mit laufender Bewegung."""
+    """Erzeugt eine gezeichnete 2D-Cartoon-Animation mit Figuren und Bewegung."""
     w, h = 720, 1280
     total = max(1, int(math.ceil(duration * fps)))
     scene_count = len(data["scenes"])
@@ -135,87 +135,141 @@ def render_animated_frames(data, duration, fps=18):
     for old in frame_dir.glob("frame_*.png"):
         old.unlink()
 
-    title_font = font(28, True)
-    scene_font = font(47, True)
-    small_font = font(22)
-    label_font = font(25, True)
-    particles = [
-        (random.randint(20, w-20), random.randint(0, h),
-         random.uniform(12, 42), random.uniform(1.0, 3.0))
-        for _ in range(42)
-    ]
+    title_font = font(25, True)
+    scene_font = font(42, True)
+    small_font = font(20)
+    particles = [(random.randint(0, w), random.randint(0, h),
+                  random.uniform(8, 30), random.uniform(1, 3)) for _ in range(32)]
+
+    def character(draw, x, y, scale, t, pose, shirt, skin=(255, 194, 145)):
+        bob = math.sin(t * 5.5) * 7 * scale
+        x, y = int(x), int(y + bob)
+        head_r = int(48 * scale)
+        swing = math.sin(t * 6.0) * 24 * scale
+        if pose == "walk":
+            left_leg, right_leg = swing, -swing
+            left_arm, right_arm = -swing * .75, swing * .75
+        elif pose == "point":
+            left_leg, right_leg = 0, 0
+            left_arm, right_arm = -35 * scale, -95 * scale
+        elif pose == "celebrate":
+            left_leg, right_leg = -12 * scale, 12 * scale
+            left_arm, right_arm = -105 * scale, 105 * scale
+        elif pose == "think":
+            left_leg, right_leg = 0, 0
+            left_arm, right_arm = 0, -65 * scale
+        else:
+            left_leg, right_leg = 0, 0
+            left_arm, right_arm = -8 * scale, 8 * scale
+
+        hip_y = y + int(155 * scale)
+        shoulder_y = y + int(75 * scale)
+        leg_len = int(92 * scale)
+        limb = max(8, int(17 * scale))
+        for side, offset in [(-1, left_leg), (1, right_leg)]:
+            knee_x = x + int(side * 19 * scale + offset * .45)
+            knee_y = hip_y + int(leg_len * .52)
+            foot_x = knee_x + int(offset * .8)
+            foot_y = hip_y + leg_len
+            draw.line((x + int(side*17*scale), hip_y, knee_x, knee_y, foot_x, foot_y),
+                      fill=(28, 35, 52), width=limb + 5, joint="curve")
+            draw.ellipse((knee_x-limb//2, knee_y-limb//2, knee_x+limb//2, knee_y+limb//2), fill=skin)
+            draw.rounded_rectangle((foot_x-17*scale, foot_y-5*scale, foot_x+19*scale, foot_y+10*scale),
+                                   radius=int(8*scale), fill=(235, 242, 248))
+        draw.rounded_rectangle((x-int(39*scale), shoulder_y, x+int(39*scale), hip_y+int(8*scale)),
+                               radius=int(22*scale), fill=shirt,
+                               outline=(245, 250, 255), width=max(2, int(3*scale)))
+        for side, amount in [(-1, left_arm), (1, right_arm)]:
+            elbow_x = x + int(side * 65 * scale + amount * .35)
+            elbow_y = shoulder_y + int(38*scale) + int(amount * .15)
+            hand_x = x + int(side * 75 * scale + amount)
+            hand_y = shoulder_y + int(75*scale) + int(amount * .8)
+            draw.line((x+int(side*30*scale), shoulder_y+int(18*scale),
+                       elbow_x, elbow_y, hand_x, hand_y), fill=skin, width=limb, joint="curve")
+            draw.ellipse((hand_x-9*scale, hand_y-9*scale, hand_x+9*scale, hand_y+9*scale), fill=skin)
+        draw.rectangle((x-12*scale, y+38*scale, x+12*scale, y+70*scale), fill=skin)
+        draw.ellipse((x-head_r, y-head_r, x+head_r, y+head_r),
+                     fill=skin, outline=(75, 48, 42), width=max(2, int(3*scale)))
+        draw.pieslice((x-head_r-2, y-head_r-8, x+head_r+2, y+head_r+25), 180, 360, fill=(48, 35, 31))
+        eye_y = y - 3*scale
+        draw.ellipse((x-20*scale, eye_y-5*scale, x-10*scale, eye_y+6*scale), fill=(30, 35, 45))
+        draw.ellipse((x+10*scale, eye_y-5*scale, x+20*scale, eye_y+6*scale), fill=(30, 35, 45))
+        draw.arc((x-14*scale, y+7*scale, x+14*scale, y+25*scale), 5, 175,
+                 fill=(120, 45, 45), width=max(2, int(3*scale)))
 
     for n in range(total):
         t = n / fps
         scene_index = min(scene_count - 1, int(t / duration * scene_count))
         local = (t * scene_count / duration) % 1.0
-        enter = min(1.0, local / 0.18)
+        enter = min(1.0, local / 0.2)
         enter = enter * enter * (3 - 2 * enter)
-        img = Image.new("RGB", (w, h), (5, 9, 18))
-        d = ImageDraw.Draw(img)
-
-        offset = int((t * 34) % 80)
-        for x in range(-80 + offset, w, 80):
-            d.line((x, 0, x, h), fill=(12, 27, 39), width=1)
-        for y in range(-80 + offset, h, 80):
-            d.line((0, y, w, y), fill=(12, 27, 39), width=1)
-        for px, py, speed, radius in particles:
-            yy = (py - t * speed * 18) % h
-            xx = (px + math.sin(t * 0.7 + py) * 15) % w
-            rr = max(1, int(radius))
-            d.ellipse((xx-rr, yy-rr, xx+rr, yy+rr), fill=(38, 125, 111))
-
-        d.rounded_rectangle((24, 24, w-24, h-24), radius=30,
-                            outline=(36, 190, 130), width=3)
-        d.text((52, 55), "AI ERIK  /  AUTOPILOT", font=title_font, fill=(74, 255, 170))
-        d.text((w-150, 60), f"{scene_index+1:02d} / {scene_count:02d}",
-               font=small_font, fill=(155, 183, 198))
-
-        cx, cy = w//2, 440
-        pulse = 1.0 + 0.07 * math.sin(t * 4.2)
-        radius = int(112 * pulse)
-        for ring in range(3):
-            rr = radius + ring * 34
-            d.ellipse((cx-rr, cy-rr, cx+rr, cy+rr),
-                      outline=(25 + ring*8, 130 + ring*25, 105 + ring*18), width=3)
-        angle = t * 1.8
-        for k in range(6):
-            a = angle + k * math.tau / 6
-            ox = cx + math.cos(a) * (radius + 68)
-            oy = cy + math.sin(a) * (radius + 68)
-            d.ellipse((ox-8, oy-8, ox+8, oy+8), fill=(70, 255, 170))
-        d.ellipse((cx-radius//2, cy-radius//2, cx+radius//2, cy+radius//2),
-                  fill=(12, 65, 63), outline=(85, 255, 180), width=5)
-        d.text((cx, cy), "AI", font=font(55, True), fill=(210, 255, 235), anchor="mm")
-
         scene = str(data["scenes"][scene_index])
-        lines = textwrap.wrap(scene, width=22)
-        y = 690 + int((1-enter) * 90)
-        for line in lines[:3]:
+        lower = scene.lower()
+        img = Image.new("RGB", (w, h), (8, 13, 27))
+        d = ImageDraw.Draw(img)
+        drift = int(math.sin(t * .45) * 24)
+        d.ellipse((70+drift, 170, 650+drift, 750), fill=(15, 38, 57))
+        d.ellipse((130-drift, 230, 590-drift, 690), outline=(32, 93, 105), width=5)
+        for px, py, speed, radius in particles:
+            yy = (py - t * speed * 14) % h
+            xx = (px + math.sin(t + py) * 16) % w
+            rr = max(1, int(radius))
+            d.ellipse((xx-rr, yy-rr, xx+rr, yy+rr), fill=(50, 145, 135))
+
+        prop_x, prop_y = 555, 390
+        if any(k in lower for k in ("planet", "weltall", "raum", "stern", "mond")):
+            d.ellipse((prop_x-62, prop_y-62, prop_x+62, prop_y+62), fill=(70, 110, 205), outline=(180, 210, 255), width=5)
+            d.ellipse((prop_x-105, prop_y-25, prop_x+105, prop_y+25), outline=(120, 225, 205), width=9)
+            d.ellipse((prop_x-17, prop_y-28, prop_x+12, prop_y+5), fill=(100, 160, 220))
+        elif any(k in lower for k in ("licht", "energie", "idee", "erfind", "gehirn")):
+            d.ellipse((prop_x-48, prop_y-55, prop_x+48, prop_y+45), fill=(255, 207, 83), outline=(255, 240, 170), width=5)
+            d.rounded_rectangle((prop_x-22, prop_y+39, prop_x+22, prop_y+70), radius=8, fill=(220, 230, 240))
+            for a in range(8):
+                ang = a * math.tau / 8
+                ex, ey = prop_x+math.cos(ang)*78, prop_y+math.sin(ang)*78
+                d.line((prop_x+math.cos(ang)*58, prop_y+math.sin(ang)*58, ex, ey), fill=(255, 218, 100), width=6)
+        elif any(k in lower for k in ("handy", "smartphone", "app", "computer", "internet")):
+            d.rounded_rectangle((prop_x-48, prop_y-85, prop_x+48, prop_y+85), radius=17,
+                                fill=(28, 38, 58), outline=(115, 235, 205), width=6)
+            d.rounded_rectangle((prop_x-34, prop_y-62, prop_x+34, prop_y+58), radius=8, fill=(42, 120, 145))
+            d.ellipse((prop_x-6, prop_y+66, prop_x+6, prop_y+78), fill=(220, 235, 240))
+        elif any(k in lower for k in ("wasser", "meer", "ozean", "flut")):
+            for j in range(4):
+                yy = prop_y-45+j*32
+                d.arc((prop_x-100, yy-20, prop_x+100, yy+30), 0, 180, fill=(70, 190, 245), width=9)
+            d.ellipse((prop_x-32, prop_y-95, prop_x+32, prop_y-30), fill=(80, 170, 235))
+        else:
+            d.rounded_rectangle((prop_x-70, prop_y-62, prop_x+70, prop_y+62), radius=22,
+                                fill=(20, 70, 75), outline=(75, 230, 175), width=5)
+            d.line((prop_x-35, prop_y, prop_x-8, prop_y+25, prop_x+42, prop_y-30),
+                   fill=(190, 255, 220), width=9)
+
+        pose = "walk" if scene_index % 3 == 0 else ("point" if scene_index % 3 == 1 else "think")
+        if any(k in lower for k in ("entdeck", "gewinn", "lösung", "geschafft", "erfolg")):
+            pose = "celebrate"
+        character(d, int(245 + math.sin(t*1.4)*25), 475, 1.0, t, pose, (48, 170, 130))
+
+        bubble = scene[:48] + ("…" if len(scene) > 48 else "")
+        bb = d.textbbox((0, 0), bubble, font=small_font)
+        bw = min(430, bb[2]-bb[0]+42)
+        d.rounded_rectangle((70, 760, 70+bw, 825), radius=20, fill=(240, 248, 246), outline=(75, 235, 175), width=3)
+        d.text((90, 779), bubble, font=small_font, fill=(12, 30, 38))
+        d.text((42, 48), "AI ERIK  /  ANIMATED STORY", font=title_font, fill=(90, 255, 180))
+        d.text((w-130, 52), f"{scene_index+1:02d}/{scene_count:02d}", font=small_font, fill=(175, 205, 215))
+        lines = textwrap.wrap(scene, width=24)
+        y = 890 + int((1-enter)*45)
+        for line in lines[:2]:
             box = d.textbbox((0, 0), line, font=scene_font)
-            x = (w - (box[2]-box[0])) // 2
-            d.text((x+3, y+4), line, font=scene_font, fill=(14, 55, 48))
-            d.text((x, y), line, font=scene_font, fill=(245, 252, 250))
-            y += 64
-
-        base_y = 1010
-        for k in range(31):
-            bh = 12 + int((0.5 + 0.5 * math.sin(t*5 + k*0.55)) * 52)
-            bx = 92 + k * 18
-            d.rounded_rectangle((bx, base_y-bh, bx+8, base_y),
-                                radius=4, fill=(52, 220, 145))
-        d.text((52, 1090), "WISSEN IN BEWEGUNG", font=label_font, fill=(75, 245, 165))
-        d.text((52, 1140), "KI-Visualisierung • automatisch animiert",
-               font=small_font, fill=(150, 174, 190))
-
+            x = (w-(box[2]-box[0]))//2
+            d.text((x+2, y+3), line, font=scene_font, fill=(8, 55, 48))
+            d.text((x, y), line, font=scene_font, fill=(248, 252, 250))
+            y += 58
+        d.rounded_rectangle((42, 1190, w-42, 1205), radius=7, fill=(30, 50, 60))
         progress = n / max(1, total-1)
-        d.rounded_rectangle((52, 1200, w-52, 1212), radius=6, fill=(25, 45, 55))
-        d.rounded_rectangle((52, 1200, 52 + int((w-104)*progress), 1212),
-                            radius=6, fill=(65, 255, 165))
+        d.rounded_rectangle((42, 1190, 42+int((w-84)*progress), 1205), radius=7, fill=(65, 245, 165))
         img.save(frame_dir / f"frame_{n:05d}.png", optimize=True)
 
     return frame_dir
-
 
 async def make_voice(text, path):
     communicate = edge_tts.Communicate(text, "de-DE-ConradNeural", rate="+0%")
