@@ -111,62 +111,45 @@ def research_shorts_trends(state=None):
     return result
 
 def local_story_fallback(state, comments):
-    """Erstellt ohne externe Text-KI eine vollständige, sichere Story mit fünf Bildszenen."""
+    """Lokaler Planer für einzigartige Disziplin-vs-Ego-Shorts."""
     episode=int(state.get("episode",0))+1
-    heroes=[
-        ("Milo","blauer Hoodie und dunkle Haare","neugierig und mutig"),
-        ("Lina","roter Hoodie und braune Haare","clever und entschlossen"),
-        ("Noah","grüne Jacke und schwarze Haare","ruhig und erfinderisch"),
-        ("Mira","violette Jacke und blonde Haare","witzig und aufmerksam"),
-        ("Ben","orangefarbene Jacke und braune Haare","abenteuerlustig")
+    challenges=[
+        ("KLIMMZÜGE","Wer hält am längsten durch?","Wiederholungen"),
+        ("LAUFEN","Wer bleibt bis zum Ende dran?","Kilometer"),
+        ("SCHWIMMEN","Wer teilt seine Kräfte klug ein?","Bahnen"),
+        ("LERNEN","Wer bleibt konzentriert?","Lernblöcke"),
+        ("SEILSPRINGEN","Wer findet seinen Rhythmus?","Sprünge"),
+        ("RADFAHREN","Wer fährt konstant weiter?","Kilometer"),
+        ("WANDERN","Wer geht Schritt für Schritt weiter?","Kilometer"),
+        ("LIEGESTÜTZE","Wer bleibt sauber und konstant?","Wiederholungen")
     ]
-    name,clothes,personality=heroes[(episode-1)%len(heroes)]
-    plots=[
-        ("Das geheime Portal","In einer alten Höhle entdeckt {n} eine leuchtende Tür. Dahinter wartet ein Rätsel, das nur mit Mut und Köpfchen lösbar ist.",
-         ["{n} entdeckt eine geheimnisvolle Höhle zwischen hohen Felsen.","Ein goldenes Portal leuchtet plötzlich in der dunklen Wand auf.","{n} findet einen Schlüssel neben einer alten Truhe.","Das Portal öffnet sich und ein funkelnder Sternenweg erscheint.","{n} tritt hindurch und entdeckt eine fantastische neue Welt."]),
-        ("Der Roboter erwacht","Im verlassenen Labor findet {n} einen kleinen Roboter. Als er plötzlich erwacht, beginnt eine überraschende Suche nach seinem verlorenen Energie-Kristall.",
-         ["{n} betritt ein verlassenes Hightech-Labor voller blinkender Geräte.","Ein kleiner Roboter erwacht auf einem Arbeitstisch.","Der Roboter zeigt auf eine leere Energiehalterung.","Gemeinsam entdecken sie einen leuchtenden Kristall in einer Kiste.","Der Roboter startet und projiziert eine Karte zum nächsten Abenteuer."]),
-        ("Das Rätsel der Insel","Auf einer einsamen Insel entdeckt {n} eine geheimnisvolle Karte. Eine Reihe überraschender Hinweise führt zu einem Schatz, den niemand erwartet hat.",
-         ["{n} landet mit einem kleinen Boot an einer tropischen Insel.","Eine alte Karte liegt halb im Sand vergraben.","{n} folgt leuchtenden Markierungen durch den Dschungel.","Hinter einem Wasserfall entdeckt {n} eine goldene Schatztruhe.","In der Truhe liegt ein kleiner Kompass, der geheimnisvoll aufleuchtet."]),
-        ("Die Rakete ohne Pilot","Bei einem Schulausflug entdeckt {n} eine startbereite Mini-Rakete. Ein unerwartetes Signal führt zu einer lustigen Rettungsmission im Weltall.",
-         ["{n} entdeckt in einer Raumstation eine kleine silberne Rakete.","Ein blinkendes Signal erscheint auf dem Kontrollpult.","Die Rakete hebt ab und fliegt an einem blauen Planeten vorbei.","{n} entdeckt einen freundlichen kleinen Roboter im All.","Gemeinsam landen sie sicher und feiern ihre unerwartete Begegnung."]),
-        ("Das verschwundene Licht","Als im Wald alle Lichter verschwinden, folgt {n} einer geheimnisvollen Spur. Am Ende wartet eine freundliche Überraschung.",
-         ["{n} bemerkt, dass im Wald alle leuchtenden Blumen dunkel sind.","Eine Spur aus kleinen Lichtpunkten führt tiefer zwischen die Bäume.","{n} entdeckt eine alte Maschine unter den Wurzeln.","Mit einem gefundenen Kristall bringt {n} die Maschine wieder zum Leuchten.","Der ganze Wald erstrahlt und kleine Glühwürmchen tanzen um {n}."])
+    activity,question,unit=challenges[(episode-1)%len(challenges)]
+    stages=[
+        {"day":"DAY 1","scores":[6,32,16,6],"line":"Am Anfang will das Ego allen etwas beweisen."},
+        {"day":"DAY 3","scores":[10,38,24,14],"line":"Die Motivation wird leiser. Das Ego will trotzdem gewinnen."},
+        {"day":"DAY 7","scores":[11,39,34,28],"line":"Obsession gibt alles – aber ohne Pause wird es schwer."},
+        {"day":"DAY 14","scores":[11,39,42,52],"line":"Disziplin bleibt konstant und überholt die anderen."}
     ]
-    title,story,scenes=plots[(episode-1)%len(plots)]
-    story=story.format(n=name)
-    scenes=[x.format(n=name) for x in scenes]
-    scripts=[
-        f"Mitten in der Höhle entdeckt {name} eine Tür, die eigentlich nicht existieren dürfte. Ein goldenes Licht flackert auf. Neben einer alten Truhe liegt ein geheimnisvoller Schlüssel. {name} zögert kurz, steckt ihn ins Schloss und hört ein tiefes Klicken. Das Portal öffnet sich. Dahinter wartet eine völlig neue Welt.",
-        f"Dieses Labor sollte längst verlassen sein. Doch als {name} den Raum betritt, bewegt sich plötzlich ein kleiner Roboter. Er sucht seinen Energie-Kristall. Gemeinsam durchsuchen sie das Labor und entdecken eine geheimnisvolle Kiste. Darin liegt der Kristall. Als der Roboter erwacht, erscheint eine Karte zu einem neuen Abenteuer.",
-        f"Niemand hatte diese Insel auf der Karte gefunden. Doch {name} entdeckt eine alte Karte im Sand. Leuchtende Zeichen führen durch den Dschungel bis zu einem Wasserfall. Dahinter wartet eine goldene Truhe. {name} öffnet sie gespannt. Statt Gold liegt darin ein Kompass, der auf etwas Geheimnisvolles zeigt.",
-        f"Plötzlich blinkt ein Warnsignal in der Raumstation. {name} entdeckt eine kleine Rakete und startet sie. Vorbei an einem blauen Planeten taucht ein kleiner Roboter auf. Er braucht Hilfe bei der Rückkehr. Gemeinsam finden sie den Weg. Die Landung gelingt perfekt und aus der Mission wird eine neue Freundschaft.",
-        f"Mitten im Wald verschwinden alle Lichter. {name} folgt einer Spur aus funkelnden Punkten und findet eine alte Maschine unter den Wurzeln. Ein Kristall passt genau in die Öffnung. Die Maschine beginnt zu leuchten. Augenblicklich erwacht der ganze Wald. Doch zwischen den Bäumen erscheint noch ein geheimnisvoller Lichtpunkt."
-    ]
-    script=scripts[(episode-1)%len(scripts)]
-    fallback_modes=[
-        ("Fantasy und Abenteuer","Story-Animation","Farbige 2D-Abenteueranimation mit weichen Lichtakzenten und dynamischen Figuren."),
-        ("Technik und Roboter","Sci-Fi-Animation","Verspielte futuristische 2D-Animation mit leuchtenden Technikdetails."),
-        ("Rätsel und Geheimnisse","Mystery-Story","Atmosphärische 2D-Mystery-Animation mit kontrastreichem Licht."),
-        ("Weltraum und Entdeckung","Sci-Fi-Abenteuer","Bunte Weltraum-Animation mit klaren Formen und bewegten Hintergründen."),
-        ("Natur und Freundschaft","Feel-good-Animation","Warme, farbenfrohe 2D-Animation mit lebendigen Naturkulissen.")
-    ]
-    topic,video_format,style=fallback_modes[(episode-1)%len(fallback_modes)]
+    script=(f"Vier Kräfte. Eine Herausforderung: {activity.lower()}. "
+        "Motivation startet stark, aber sie ist nicht jeden Tag da. Ego will beweisen, dass es besser ist. "
+        "Obsession kennt kaum Grenzen und vergisst manchmal Pausen. Disziplin macht ruhig weiter – Schritt für Schritt. "
+        "Am Ende gewinnt nicht der lauteste Start, sondern eine gesunde Gewohnheit. "
+        "Bleib dran, mach Pausen und vergleiche dich nicht mit anderen.")
     return {
-        "title":f"Folge {episode}: {title}",
-        "description":"Eine eigenständige, animierte Kurzgeschichte.",
-        "topic":topic,
-        "format":video_format,
-        "trend_reason":"Lokaler Fallback: abwechslungsreiche Idee, wenn keine Text-KI erreichbar ist.",
-        "script":script,
-        "story":story,
-        "visual_style":style+" Hochformat 9:16, klare Figuren, sichtbare Aktionen und filmische Beleuchtung.",
-        "characters":[{"name":name,"appearance":clothes,"clothing":clothes,"personality":personality}],
-        "scenes":scenes,
-        "edit_plan":["Sofortiger visueller Hook und kurzer Push-in","Fließender Follow-Shot zur Handlung","Nahaufnahme des wichtigen Gegenstands","Dynamischer Perspektivwechsel beim Wendepunkt","Kurzer Reveal-Shot mit Reaktion"],
-        "sound_plan":["Originaler atmosphärischer Einstieg","Leiser Bewegungssound","Originaler Entdeckungs-Chime","Kurzer Whoosh zum Wendepunkt","Warmer Abschlussklang"],
-        "voice_required":True,
-        "hashtags":["#Shorts","#Animation","#Story","#AI"]
+        "title":f"Folge {episode}: Motivation vs Ego vs Obsession vs Discipline",
+        "description":f"Vier Eigenschaften, eine Challenge: {activity}. Eine kurze Story über gesunde Disziplin.",
+        "topic":"Disziplin, Motivation, Ego und Obsession",
+        "format":"Schwarzer Stickman-Vergleich",
+        "trend_reason":"Eigenständige Folge im festgelegten Vergleichsformat.",
+        "challenge":activity,"challenge_question":question,"unit":unit,"stages":stages,
+        "script":script,"story":script,
+        "visual_style":"Minimalistische weiße leuchtende Strichmännchen auf tiefschwarzem Hintergrund, vier getrennte farbige Lichtkegel: Motivation rot-orange, Ego violett, Obsession orange, Discipline gold. Vertikales 9:16-Video.",
+        "characters":[{"name":n,"appearance":"weiß leuchtendes Strichmännchen","clothing":"keine Details","personality":p}
+            for n,p in [("Motivation","startet begeistert"),("Ego","will sich beweisen"),("Obsession","treibt sich stark an, braucht aber Pausen"),("Discipline","bleibt ruhig und konstant")]],
+        "scenes":[f"{x['day']}: vier Strichmännchen beginnen {activity.lower()}, Werte {x['scores']}." for x in stages],
+        "edit_plan":["Sofortiger DAY-1-Hook mit Timer und Challenge-Frage","Vier Figuren nebeneinander, farbige Lichtkegel","Schnelle Tageswechsel und animierte Zähler","Spannender Vergleich kurz vor dem Ende","Discipline-Reveal und klare Schlussbotschaft"],
+        "sound_plan":["Tiefer atmosphärischer Auftakt","Leises rhythmisches Original-Ticken","Steigernder Original-Beat","Kurzer Spannungs-Whoosh","Ruhiger kraftvoller Abschlussklang"],
+        "voice_required":True,"hashtags":["#Discipline","#Motivation","#Mindset","#Shorts"]
     }
 
 def generate(state,comments,trend_data=None):
@@ -174,29 +157,26 @@ def generate(state,comments,trend_data=None):
     previous_stories=[{"episode":x.get("episode"),"title":x.get("title"),"topic":x.get("topic"),
         "format":x.get("format"),"story":x.get("story",""),"script":x.get("script","")[:500]} for x in previous]
     learning=state.get("learning",{})
-    prompt=f"""Du bist AI ERIK, ein kreativer und sicherer YouTube-Shorts-Producer.
-Du darfst NICHT immer Roblox oder denselben Cartoon-Stil machen. Wechsle eigenständig zwischen Gaming, Comedy, Animation, Mini-Doku, Tieren, Technik, KI, Fakten, DIY, Mystery, Sport, Essen, Storytime, visuellen Rätseln und anderen jugendfreien Themen.
-ANALYSE: Werte die gelieferten aktuellen Suchsignale aus und wähle selbst das stärkste passende Thema. Berücksichtige, welche Themen und Formate zuletzt oft vorkamen. Die Suchsignale sind Inspiration, keine bestätigten View-Zahlen.
-KREATIVITÄT: Erfinde eine eigene Idee. Kopiere kein fremdes Video, keinen Creator, keine identische Szene, keinen geschützten Charakter und keine fremde Stimme. Nutze nur allgemeine Erfolgsprinzipien wie starken Einstieg, klare Handlung, Überraschung und gutes Tempo.
-PRODUKTION: Plane genau fünf Szenen mit konkreter sichtbarer Handlung. Wähle den Stil passend zum Thema: z.B. 3D-Cartoon, 2D-Animation, Gaming-Optik, Motion Graphics oder dokumentarischer Stil. Nicht automatisch Roblox.
-EDITING: Plane Hook in den ersten 1-2 Sekunden, abwechslungsreiche Einstellungsgrößen, passende Schnitte, gezielte Zooms, Bewegungsübergänge und Höhepunkt. Keine Effekte ohne Zweck.
-SOUND: Plane passende Geräusche, Atmosphäre und Musik je Szene. Nur eigene/originale oder ausdrücklich lizenzierte/freigegebene Audios. Keine erfundenen Sound-IDs und keine Behauptung, geschützte Trend-Sounds eingebaut zu haben.
-STIMME: Entscheide über voice_required selbst. Bei Erklärungen oder Dialogen ja; bei rein visuellen, Musik- oder Comedy-Clips kann es false sein. Skript trotzdem als Produktionsnotiz liefern.
-LERNSYSTEM: Nutze bisherige Folgen und Häufigkeiten. Vermeide Wiederholungen und teste neue Kombinationen.
-LETZTE FOLGEN:
+    prompt=f"""Du bist AI ERIK und produzierst AUSSCHLIESSLICH Shorts im Format Disziplin vs Motivation vs Ego vs Obsession.
+KEINE Gaming-Videos, keine Cartoon-Geschichten, keine Trend-Recherche, keine anderen Formate.
+Jede Folge ist ein eigener Vergleich mit vier weißen leuchtenden Strichmännchen auf rein schwarzem Hintergrund:
+MOTIVATION (rot-orange), EGO (violett), OBSESSION (orange), DISCIPLINE (goldgelb). Alle vier stehen nebeneinander und machen dieselbe Challenge.
+Challenge selbst auswählen und zwischen Klimmzügen, Laufen, Schwimmen, Lernen, Seilspringen, Radfahren, Wandern, Liegestützen, Tanzen, Treppensteigen oder einer anderen sicheren Alltags-Challenge wechseln.
+WICHTIG: Challenge nicht in zwei aufeinanderfolgenden Folgen wiederholen. Auch Zahlen, Tagesverlauf, Hook, Frage, Erzähltext, Schnitte, Kamera, Sound und Schlussbotschaft müssen sich sichtbar unterscheiden. Prüfe die letzten Folgen.
+Ablauf: starker DAY 1-Hook mit Frage; vier Figuren starten; mehrere Tage/Etappen vergehen; animierte Zähler zeigen den Fortschritt; Motivation kann nachlassen, Ego startet groß, Obsession muss Pausen lernen, Discipline bleibt konstant; am Ende gibt es eine überraschende, nachvollziehbare Auflösung und eine kurze Botschaft für den Alltag.
+Die Zahlen sind eine erzählerische Visualisierung, keine echten Leistungsversprechen. Keine gefährlichen Challenges, keine Aufforderung zu Übertraining oder Selbstbestrafung. Zeige Pausen und gesunde Grenzen als Stärke.
+VISUALS: schwarzer Hintergrund, leuchtende weiße Strichmännchen, vier farbige Lichtkegel, gut lesbare englische Labels MOTIVATION / EGO / OBSESSION / DISCIPLINE und Zähler. Kein realistischer Mensch, keine fremden Creator, keine Logos.
+EDIT: dynamischer vertikaler 9:16-Schnitt, Timer, Zähler-Animation, schnelle Tageswechsel, kurze Zooms, Spannungsaufbau und klares Finale. Jede Folge eigene Schnittabfolge.
+SOUND: eigener atmosphärischer Sound, rhythmische Originaleffekte und passende lizenzierte Musik; keine fremden Trend-Sounds kopieren.
+Letzte Folgen zur Vermeidung von Wiederholungen:
 {json.dumps(previous_stories,ensure_ascii=False)}
-LERNPROFIL:
-{json.dumps(learning,ensure_ascii=False)[:9000]}
-ZUSCHAUERIDEEN:
+Lernprofil:
+{json.dumps(learning,ensure_ascii=False)[:5000]}
+Zuschauerideen:
 {json.dumps(comments,ensure_ascii=False)}
-AKTUELLE TREND-SIGNALE:
-{json.dumps(trend_data or {},ensure_ascii=False)[:14000]}
-Erstelle Folge {state.get('episode',0)+1}. Skript 45-80 deutsche Wörter. Antworte nur mit JSON:
-title (beginnt mit Folge {state.get('episode',0)+1}:), description, topic, format, trend_reason, script, story, visual_style,
-characters (Liste mit name, appearance, clothing, personality; darf leer sein), scenes (genau 5),
-edit_plan (genau 5 Schnitt-/Kameraanweisungen), sound_plan (genau 5 Soundhinweise),
-voice_required (true/false), hashtags (3-5).
-Keine Untertitel, eingeblendeten Wörter, Logos oder Wasserzeichen. Keine gefährlichen Challenges, privaten Daten oder falschen Tatsachenbehauptungen."""
+Erstelle Folge {state.get('episode',0)+1}. Skript auf Deutsch, 55-85 Wörter. Antworte NUR als JSON mit title, description, topic, format, trend_reason, challenge, challenge_question, unit, stages (genau 4 Objekte mit day und scores; scores immer vier Zahlen in Reihenfolge Motivation,Ego,Obsession,Discipline), script, story, visual_style, characters, scenes (genau 4), edit_plan (genau 5), sound_plan (genau 5), voice_required, hashtags (3-5).
+title beginnt mit "Folge {state.get('episode',0)+1}:". Keine Untertitel oder zusätzliche Texttafeln außer DAY, Challenge-Frage, vier Labels und Zähler."""
+
     def parse_json(raw):
         raw=(raw or "").strip()
         if raw.startswith("```"):
@@ -477,6 +457,119 @@ def create_local_cartoon(raw,d,seconds):
         "-crf","22","-pix_fmt","yuv420p","-r","24",str(raw)],check=True)
     log("Lokaler Gratis-Fallback: fünf individuell illustrierte und animierte Story-Szenen gerendert.")
 
+def create_local_discipline_video(raw,d,seconds=20):
+    """Rendert lokal ein animiertes Disziplin-vs-Ego-Video mit vier Stickfiguren."""
+    import math
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+    W,H,FPS=540,960,15
+    frames=round(seconds*FPS)
+    episode=int(d.get("episode",1))
+    challenge=str(d.get("challenge","KLIMMZÜGE")).upper()
+    stages=d.get("stages") or [
+        {"day":"DAY 1","scores":[6,32,16,6]},
+        {"day":"DAY 3","scores":[10,38,24,14]},
+        {"day":"DAY 7","scores":[11,39,34,28]},
+        {"day":"DAY 14","scores":[11,39,42,52]}]
+    stages=(stages+[stages[-1]]*4)[:4]
+    labels=["MOTIVATION","EGO","OBSESSION","DISCIPLINE"]
+    colors=[(255,90,48),(155,105,255),(255,145,45),(255,205,70)]
+    font_path="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    try:
+        big=ImageFont.truetype(font_path,40); med=ImageFont.truetype(font_path,19); small=ImageFont.truetype(font_path,15)
+    except Exception:
+        big=med=small=ImageFont.load_default()
+    frame_dir=OUT/"discipline_frames"; shutil.rmtree(frame_dir,ignore_errors=True); frame_dir.mkdir(parents=True)
+    def center(draw,y,text,font,fill):
+        box=draw.textbbox((0,0),text,font=font); draw.text(((W-(box[2]-box[0]))/2,y),text,font=font,fill=fill)
+    def stick(draw,cx,cy,phase,kind,color):
+        # soft coloured halo behind each glowing white stick figure
+        glow=Image.new("RGBA",(W,H),(0,0,0,0)); gd=ImageDraw.Draw(glow)
+        gd.ellipse((cx-54,cy-100,cx+54,cy+92),fill=(*color,45))
+        glow=glow.filter(ImageFilter.GaussianBlur(28))
+        base.alpha_composite(glow)
+        draw=ImageDraw.Draw(base)
+        white=(245,248,255,255); width=5
+        head=(cx-12,cy-75,cx+12,cy-51)
+        draw.ellipse(head,outline=white,width=width)
+        if kind=="KLIMMZÜGE":
+            draw.line((cx,cy-50,cx,cy+4),fill=white,width=width)
+            lift=math.sin(phase*math.pi*2)*10
+            draw.line((cx,cy-36,cx-22,cy-12+lift),fill=white,width=width)
+            draw.line((cx,cy-36,cx+22,cy-12+lift),fill=white,width=width)
+            draw.line((cx,cy+4,cx-18,cy+38),fill=white,width=width)
+            draw.line((cx,cy+4,cx+18,cy+38),fill=white,width=width)
+        elif kind in ("LAUFEN","RADFAHREN","WANDERN","SEILSPRINGEN"):
+            draw.line((cx,cy-50,cx,cy+5),fill=white,width=width)
+            swing=math.sin(phase*math.pi*2)*18
+            draw.line((cx,cy-32,cx-20-swing,cy-8),fill=white,width=width)
+            draw.line((cx,cy-32,cx+20+swing,cy-8),fill=white,width=width)
+            draw.line((cx,cy+5,cx-18+swing,cy+38),fill=white,width=width)
+            draw.line((cx,cy+5,cx+18-swing,cy+38),fill=white,width=width)
+        elif kind=="SCHWIMMEN":
+            draw.line((cx-28,cy-10,cx+28,cy-10),fill=white,width=width)
+            draw.line((cx-8,cy-10,cx+14,cy+13),fill=white,width=width)
+            draw.line((cx+14,cy+13,cx+30,cy-3),fill=white,width=width)
+            draw.arc((cx-42,cy+22,cx+42,cy+48),0,180,fill=white,width=3)
+        elif kind=="LERNEN":
+            draw.line((cx,cy-50,cx,cy+18),fill=white,width=width)
+            draw.line((cx,cy-28,cx-18,cy-4),fill=white,width=width)
+            draw.line((cx,cy-28,cx+18,cy-4),fill=white,width=width)
+            draw.line((cx,cy+18,cx-16,cy+38),fill=white,width=width)
+            draw.line((cx,cy+18,cx+16,cy+38),fill=white,width=width)
+            draw.line((cx-30,cy+42,cx+30,cy+42),fill=white,width=3)
+        else:
+            draw.line((cx,cy-50,cx,cy+5),fill=white,width=width)
+            draw.line((cx,cy-30,cx-20,cy-8),fill=white,width=width)
+            draw.line((cx,cy-30,cx+20,cy-8),fill=white,width=width)
+            draw.line((cx,cy+5,cx-18,cy+38),fill=white,width=width)
+            draw.line((cx,cy+5,cx+18,cy+38),fill=white,width=width)
+    for fi in range(frames):
+        t=fi/FPS; stage_index=min(3,int(t/max(0.1,seconds/4)))
+        local=(t/(seconds/4))-stage_index
+        st=stages[stage_index]; scores=st.get("scores",[6,32,16,6])
+        base=Image.new("RGBA",(W,H),(2,3,8,255)); draw=ImageDraw.Draw(base)
+        center(draw,38,str(st.get("day","DAY 1")),big,(250,250,255,255))
+        center(draw,94,challenge,med,(220,225,240,255))
+        center(draw,132,str(d.get("challenge_question","WHO LASTS LONGER?")).upper()[:34],small,(180,185,205,255))
+        # Four columns and separate beams
+        col_w=W/4
+        for i,(label,color) in enumerate(zip(labels,colors)):
+            cx=int(col_w*(i+.5))
+            beam=Image.new("RGBA",(W,H),(0,0,0,0)); bd=ImageDraw.Draw(beam)
+            bd.polygon([(cx-8,245),(cx+8,245),(cx+55,620),(cx-55,620)],fill=(*color,28))
+            beam=beam.filter(ImageFilter.GaussianBlur(18)); base.alpha_composite(beam)
+            draw=ImageDraw.Draw(base)
+            draw.line((int(i*col_w+10),250,int((i+1)*col_w-10),250),fill=(*color,130),width=2)
+            if challenge=="KLIMMZÜGE":
+                draw.line((cx-42,280,cx+42,280),fill=(205,210,225,255),width=5)
+                draw.line((cx-42,280,cx-42,293),fill=(205,210,225,255),width=3)
+                draw.line((cx+42,280,cx+42,293),fill=(205,210,225,255),width=3)
+            elif challenge=="SCHWIMMEN":
+                for yy in (400,425,450):
+                    draw.arc((cx-45,yy-8,cx+45,yy+8),0,180,fill=(70,150,220,190),width=2)
+            elif challenge=="LERNEN":
+                draw.rectangle((cx-32,410,cx+32,430),outline=(180,190,210,220),width=2)
+            elif challenge in ("RADFAHREN","WANDERN"):
+                draw.ellipse((cx-28,405,cx+28,461),outline=(110,120,140,170),width=2)
+            stick(draw,cx,360,local+i*.13,challenge,color)
+            label_box=draw.textbbox((0,0),label,font=small)
+            draw.text((cx-(label_box[2]-label_box[0])/2,500),label,font=small,fill=(*color,255))
+            count=str(scores[i] if i<len(scores) else 0)
+            count_box=draw.textbbox((0,0),count,font=big)
+            draw.text((cx-(count_box[2]-count_box[0])/2,540),count,font=big,fill=(255,255,255,255))
+            draw.text((cx-25,592),str(d.get("unit","REPS")).upper()[:9],font=small,fill=(150,155,175,255))
+        if stage_index==3:
+            center(draw,690,"DISCIPLINE WINS",med,(255,215,95,255))
+            center(draw,735,"CONSISTENCY BEATS THE PERFECT START",small,(235,235,245,255))
+            center(draw,820,"REST. RESET. KEEP GOING.",small,(175,185,205,255))
+        else:
+            center(draw,710,"FOUR MINDSETS. ONE CHALLENGE.",small,(175,185,205,255))
+            center(draw,760,"WHO WILL LAST?",med,(235,235,245,255))
+        base.convert("RGB").save(frame_dir/f"frame_{fi:05d}.jpg",quality=88)
+    subprocess.run(["ffmpeg","-y","-loglevel","error","-framerate",str(FPS),"-i",str(frame_dir/"frame_%05d.jpg"),
+        "-c:v","libx264","-preset","ultrafast","-crf","21","-pix_fmt","yuv420p","-r","24",str(raw)],check=True)
+    log(f"Lokales Stickman-Video gerendert: {challenge}, 4 Figuren, schwarzer Hintergrund.")
+
 def make_video(d):
     raw=OUT/"video_ai_combined.mp4"; video=OUT/"story_episode.mp4"
     music=OUT/"ambient.wav"; effects=OUT/"sound_effects.wav"; audio=OUT/"voice.mp3"
@@ -489,7 +582,7 @@ def make_video(d):
     except AgnesGenerationDisabled as exc:
         log("Agnes ist absichtlich deaktiviert: "+str(exc)[:180])
         log("Kein kostenpflichtiger Ersatzanbieter wird ohne Freigabe gestartet.")
-        create_local_cartoon(raw,d,25)
+        create_local_discipline_video(raw,d,20)
     except Exception as agnes_exc:
         log("Agnes ist fehlgeschlagen: "+str(agnes_exc)[:240])
         try:
