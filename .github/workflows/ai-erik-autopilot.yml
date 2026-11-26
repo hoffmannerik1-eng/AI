@@ -1,4 +1,4 @@
-name: AI ERIK Stadt-Autopilot
+name: AI ERIK Cartoon-Autopilot
 
 on:
   workflow_dispatch:
@@ -9,11 +9,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: ai-erik-stadt-autopilot
+  group: ai-erik-cartoon-autopilot
   cancel-in-progress: false
 
 jobs:
-  create-city-episode:
+  create-cartoon-short:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -35,7 +35,7 @@ jobs:
         run: python -m pip install -r autopilot/requirements.txt
       - name: Check Python syntax
         run: python -m py_compile autopilot/main.py autopilot/video_provider.py
-      - name: Create city episode
+      - name: Create animated cartoon short
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -49,21 +49,21 @@ jobs:
           YOUTUBE_PRIVACY_STATUS: public
           DRY_RUN: 'false'
         run: python autopilot/main.py
-      - name: Save evolving city state
+      - name: Save story episode history
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add autopilot/city_state.json
           if ! git diff --cached --quiet; then
-            git commit -m "Update AI city world state"
+            git commit -m "Save AI cartoon episode history"
             git push
           fi
       - name: Save uploaded episode artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-erik-stadtfolge-${{ github.run_number }}
+          name: ai-erik-cartoon-short-${{ github.run_number }}
           path: autopilot/output/
           if-no-files-found: ignore
           retention-days: 7
