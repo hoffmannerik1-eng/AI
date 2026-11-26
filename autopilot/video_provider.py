@@ -76,20 +76,13 @@ def generate_video(data, output_dir, destination, clip_duration):
         "DYNAMIC ORBIT SHOT: make a smooth partial orbit around the location involved in this scene; clearly show what happens.",
         "CLOSING WIDE SHOT: pull back to a beautiful elevated view of the whole town; end with a memorable visual.",
     ]
-    building_list = ", ".join(
-        str(building.get("name", "building"))
-        + " (type "
-        + str(building.get("type", "house"))
-        + ")"
-        for building in data.get("buildings", [])[:12]
-    )
 
     normalized = []
     for index, scene in enumerate(scenes, start=1):
         prompt = (
             "Create one original cinematic vertical 9:16 video shot for episode "
             + str(data.get("episode", 1))
-            + " of a continuing fictional German miniature-city series. "
+            + " of a original German short-film story. "
             "CITY: "
             + str(data.get("city_name", "Neustadt"))
             + ". Keep architecture, street layout, materials and warm cinematic color palette consistent. "
@@ -105,7 +98,7 @@ def generate_video(data, output_dir, destination, clip_duration):
             + shot_directions[index - 1]
             + " Show this exact action clearly. Detailed realistic miniature sets, natural motion, "
             "cinematic depth of field, smooth professional camera work and believable lighting. "
-            "Do not add buildings or alter the town unless the scene explicitly describes a viewer-requested construction. "
+             "Do not introduce unrelated characters or change the story. "
             "No text, subtitles, labels, logos or watermarks."
         )[:1800]
 
