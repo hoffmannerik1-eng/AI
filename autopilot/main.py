@@ -1,4 +1,4 @@
-import os, re, json, random, asyncio, subprocess, textwrap
+import os, re, json, random, asyncio, subprocess, textwrap, math
 from datetime import datetime, timezone
 from pathlib import Path
 import feedparser
@@ -77,55 +77,124 @@ def font(size, bold=False):
             return ImageFont.truetype(p, size)
     return ImageFont.load_default()
 
-def render_frames(data):
-    frames = []
+def render_animated_frames(data, duration, fps=18):
+    """Erzeugt eigenständige Motion-Graphics-Szenen mit laufender Bewegung."""
     w, h = 720, 1280
-    for i, scene in enumerate(data["scenes"]):
-        img = Image.new("RGB", (w, h), (8, 12, 18))
+    total = max(1, int(math.ceil(duration * fps)))
+    scene_count = len(data["scenes"])
+    frame_dir = OUT / "frames"
+    frame_dir.mkdir(exist_ok=True)
+    for old in frame_dir.glob("frame_*.png"):
+        old.unlink()
+
+    title_font = font(28, True)
+    scene_font = font(47, True)
+    small_font = font(22)
+    label_font = font(25, True)
+    particles = [
+        (random.randint(20, w-20), random.randint(0, h),
+         random.uniform(12, 42), random.uniform(1.0, 3.0))
+        for _ in range(42)
+    ]
+
+    for n in range(total):
+        t = n / fps
+        scene_index = min(scene_count - 1, int(t / duration * scene_count))
+        local = (t * scene_count / duration) % 1.0
+        enter = min(1.0, local / 0.18)
+        enter = enter * enter * (3 - 2 * enter)
+        img = Image.new("RGB", (w, h), (5, 9, 18))
         d = ImageDraw.Draw(img)
-        d.rounded_rectangle((36, 45, w-36, h-45), radius=32, outline=(55, 255, 150), width=4)
-        d.text((65, 95), "AI ERIK • SHORTS", font=font(28, True), fill=(55,255,150))
-        d.text((65, 190), f"{i+1:02d} / 05", font=font(24), fill=(175,190,205))
-        lines = textwrap.wrap(scene, width=19)
-        y = 480 - len(lines)*55
-        for line in lines:
-            box = d.textbbox((0,0), line, font=font(48, True))
-            x = (w - (box[2]-box[0]))//2
-            d.text((x,y), line, font=font(48, True), fill="white")
-            y += 78
-        d.text((65, 1120), "Folge für mehr Wissen", font=font(25), fill=(55,255,150))
-        p = OUT / f"frame_{i:02d}.png"
-        img.save(p)
-        frames.append(p)
-    return frames
+
+        offset = int((t * 34) % 80)
+        for x in range(-80 + offset, w, 80):
+            d.line((x, 0, x, h), fill=(12, 27, 39), width=1)
+        for y in range(-80 + offset, h, 80):
+            d.line((0, y, w, y), fill=(12, 27, 39), width=1)
+        for px, py, speed, radius in particles:
+            yy = (py - t * speed * 18) % h
+            xx = (px + math.sin(t * 0.7 + py) * 15) % w
+            rr = max(1, int(radius))
+            d.ellipse((xx-rr, yy-rr, xx+rr, yy+rr), fill=(38, 125, 111))
+
+        d.rounded_rectangle((24, 24, w-24, h-24), radius=30,
+                            outline=(36, 190, 130), width=3)
+        d.text((52, 55), "AI ERIK  /  AUTOPILOT", font=title_font, fill=(74, 255, 170))
+        d.text((w-150, 60), f"{scene_index+1:02d} / {scene_count:02d}",
+               font=small_font, fill=(155, 183, 198))
+
+        cx, cy = w//2, 440
+        pulse = 1.0 + 0.07 * math.sin(t * 4.2)
+        radius = int(112 * pulse)
+        for ring in range(3):
+            rr = radius + ring * 34
+            d.ellipse((cx-rr, cy-rr, cx+rr, cy+rr),
+                      outline=(25 + ring*8, 130 + ring*25, 105 + ring*18), width=3)
+        angle = t * 1.8
+        for k in range(6):
+            a = angle + k * math.tau / 6
+            ox = cx + math.cos(a) * (radius + 68)
+            oy = cy + math.sin(a) * (radius + 68)
+            d.ellipse((ox-8, oy-8, ox+8, oy+8), fill=(70, 255, 170))
+        d.ellipse((cx-radius//2, cy-radius//2, cx+radius//2, cy+radius//2),
+                  fill=(12, 65, 63), outline=(85, 255, 180), width=5)
+        d.text((cx, cy), "AI", font=font(55, True), fill=(210, 255, 235), anchor="mm")
+
+        scene = str(data["scenes"][scene_index])
+        lines = textwrap.wrap(scene, width=22)
+        y = 690 + int((1-enter) * 90)
+        for line in lines[:3]:
+            box = d.textbbox((0, 0), line, font=scene_font)
+            x = (w - (box[2]-box[0])) // 2
+            d.text((x+3, y+4), line, font=scene_font, fill=(14, 55, 48))
+            d.text((x, y), line, font=scene_font, fill=(245, 252, 250))
+            y += 64
+
+        base_y = 1010
+        for k in range(31):
+            bh = 12 + int((0.5 + 0.5 * math.sin(t*5 + k*0.55)) * 52)
+            bx = 92 + k * 18
+            d.rounded_rectangle((bx, base_y-bh, bx+8, base_y),
+                                radius=4, fill=(52, 220, 145))
+        d.text((52, 1090), "WISSEN IN BEWEGUNG", font=label_font, fill=(75, 245, 165))
+        d.text((52, 1140), "KI-Visualisierung • automatisch animiert",
+               font=small_font, fill=(150, 174, 190))
+
+        progress = n / max(1, total-1)
+        d.rounded_rectangle((52, 1200, w-52, 1212), radius=6, fill=(25, 45, 55))
+        d.rounded_rectangle((52, 1200, 52 + int((w-104)*progress), 1212),
+                            radius=6, fill=(65, 255, 165))
+        img.save(frame_dir / f"frame_{n:05d}.png", optimize=True)
+
+    return frame_dir
+
 
 async def make_voice(text, path):
     communicate = edge_tts.Communicate(text, "de-DE-ConradNeural", rate="+0%")
     await communicate.save(str(path))
 
+
 def make_video(data):
-    frames = render_frames(data)
     audio = OUT / "voice.mp3"
     asyncio.run(make_voice(data["script"], audio))
-    video = OUT / "short.mp4"
-    # Match the five visual scenes to the full narration length.
     probe = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "default=noprint_wrappers=1:nokey=1", str(audio)],
         check=True, capture_output=True, text=True
     )
     audio_seconds = max(1.0, float(probe.stdout.strip()))
-    scene_seconds = audio_seconds / len(frames)
-    concat = OUT / "frames.txt"
-    with concat.open("w", encoding="utf-8") as f:
-        for p in frames:
-            f.write(f"file '{p.as_posix()}'\nduration {scene_seconds:.3f}\n")
-        f.write(f"file '{frames[-1].as_posix()}'\n")
-    subprocess.run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),"-i",str(audio),
-                    "-vf","fps=30,format=yuv420p","-c:v","libx264","-preset","veryfast",
-                    "-c:a","aac","-b:a","128k","-shortest","-movflags","+faststart",str(video)],
-                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    log(f"Videolänge an Sprechertext angepasst: {audio_seconds:.1f} Sekunden")
+    fps = 18
+    frame_dir = render_animated_frames(data, audio_seconds, fps)
+    video = OUT / "short.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-framerate", str(fps),
+        "-i", str(frame_dir / "frame_%05d.png"), "-i", str(audio),
+        "-vf", "scale=720:1280:flags=lanczos,format=yuv420p",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-r", str(fps), "-c:a", "aac", "-b:a", "128k",
+        "-shortest", "-movflags", "+faststart", str(video)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    log(f"Animiertes Motion-Graphics-Video erstellt: {audio_seconds:.1f} Sekunden")
     return video
 
 def upload(video, data):
