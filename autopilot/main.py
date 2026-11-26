@@ -314,6 +314,9 @@ def make_video(d):
         except FreeCreditsUnavailable as exc:
             log(str(exc))
             log("Kostenlose Credits reichen nicht; lokale Animation wird als Fallback erstellt.")
+        except Exception as exc:
+            log("Magic Hour konnte nicht verwendet werden: " + str(exc))
+            log("Die Folge wird mit der lokalen Animation fertiggestellt, damit der Workflow nicht abbricht.")
     else:
         log("MAGIC_HOUR_API_KEY fehlt: lokale Animations-Fallback-Version wird verwendet.")
     frames=render(d,seconds)
