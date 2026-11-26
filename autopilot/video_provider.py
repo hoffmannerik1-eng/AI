@@ -1,142 +1,190 @@
-import json
-import math
-import os
-import time
-import urllib.request
-import urllib.error
-from pathlib import Path
-import subprocess
+"""Magic Hour video generation using the official Python SDK.
 
-API = "https://api.magichour.ai/v1"
+Real generations are opt-in and limited to manually started workflow runs.
+The default is local animation, so hourly scheduled runs cannot spend credits.
+"""
+import os
+import subprocess
+from pathlib import Path
+
 MODEL = "ltx-2.5"
 RESOLUTION = "480p"
-CREDITS_PER_SECOND = 24
+CLIP_SECONDS = 5
+ESTIMATED_CREDITS_PER_CLIP = 120
+
 
 class FreeCreditsUnavailable(RuntimeError):
-    """Kein ausreichendes kostenloses Guthaben; lokale Animation verwenden."""
+    """The API generation is disabled or the configured credit budget is too low."""
 
-def _request(path, api_key, payload=None):
-    data = None if payload is None else json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        API + path,
-        data=data,
-        headers={
-            "Authorization": "Bearer " + api_key,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-        method="GET" if payload is None else "POST",
+
+def _error_status(exc):
+    response = getattr(exc, "response", None)
+    return (
+        getattr(exc, "status_code", None)
+        or getattr(response, "status_code", None)
+        or getattr(response, "status", None)
     )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:600]
-        if exc.code == 402 or "insufficient_credits" in detail:
-            raise FreeCreditsUnavailable("Magic Hour hat nicht genug kostenlose Credits. Es wurde keine kostenpflichtige Generierung gestartet.") from exc
-        raise RuntimeError("Magic Hour API HTTP " + str(exc.code) + ": " + detail) from exc
 
-def _wait_for_video(project_id, api_key):
-    for _ in range(48):
-        project = _request("/video-projects/" + project_id, api_key)
-        status = project.get("status")
-        if status == "complete":
-            downloads = project.get("downloads") or []
-            if not downloads or not downloads[0].get("url"):
-                raise RuntimeError("Magic Hour hat keinen Video-Download zurückgegeben.")
-            return downloads[0]["url"]
-        if status in ("error", "canceled"):
-            raise RuntimeError("Magic Hour-Generierung fehlgeschlagen: " + json.dumps(project.get("error"), ensure_ascii=False)[:500])
-        time.sleep(5)
-    raise TimeoutError("Magic Hour-Generierung dauerte länger als vier Minuten.")
 
 def generate_video(data, output_dir, destination, clip_duration):
     api_key = os.getenv("MAGIC_HOUR_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("MAGIC_HOUR_API_KEY fehlt.")
-    duration = max(5, min(12, int(math.ceil(float(clip_duration)))))
+
+    # Never generate automatically on the hourly schedule or without an
+    # explicit, parent-managed credit budget.
+    enabled = os.getenv("MAGIC_HOUR_ENABLE_GENERATION", "").strip().lower()
+    if enabled != "true":
+        raise FreeCreditsUnavailable(
+            "Magic Hour ist standardmäßig ausgeschaltet. "
+            "Es wird die lokale Animation verwendet."
+        )
+
     scenes = data.get("scenes") or []
     if len(scenes) != 5:
         raise RuntimeError("Für Magic Hour werden genau fünf Szenen benötigt.")
 
-    # Vor dem Erzeugen Kontostufe und Guthaben prüfen. Nur Free-Tier + vorhandenes
-    # Guthaben verwenden; niemals kostenpflichtige Modelle oder Auflösungen anfordern.
-    account = _request("/account", api_key)
-    if account.get("tier") != "free":
-        raise RuntimeError("Magic Hour ist nicht im Free-Tier. Aus Sicherheitsgründen wird keine Video-API verwendet.")
-    needed = duration * CREDITS_PER_SECOND * len(scenes)
-    available = int(account.get("credits", 0))
-    print("[VIDEO] Magic Hour Free-Tier: " + str(available) + " Credits verfügbar; " + str(needed) + " benötigt.", flush=True)
-    if available < needed:
+    estimated_total = len(scenes) * ESTIMATED_CREDITS_PER_CLIP
+    try:
+        credit_budget = int(os.getenv("MAGIC_HOUR_MAX_CREDITS_PER_EPISODE", "0"))
+    except ValueError:
+        credit_budget = 0
+
+    if credit_budget < estimated_total:
         raise FreeCreditsUnavailable(
-            "Nicht genug Magic Hour-Free-Credits: " + str(available) +
-            " vorhanden, " + str(needed) + " für fünf Szenen benötigt."
+            "Das konfigurierte Magic-Hour-Limit reicht nicht. "
+            "Für fünf 5-Sekunden-Szenen mit LTX-2.5 werden laut Anbieter "
+            + str(estimated_total)
+            + " Credits geschätzt; eingestellt sind "
+            + str(credit_budget)
+            + ". Es wird nichts generiert."
         )
+
+    try:
+        from magic_hour import Client
+        client = Client(token=api_key)
+    except Exception as exc:
+        raise RuntimeError("Das offizielle Magic Hour SDK konnte nicht geladen werden: " + str(exc)) from exc
 
     folder = Path(output_dir) / "magic_hour_clips"
     folder.mkdir(parents=True, exist_ok=True)
-    normalized = []
+
     shot_directions = [
         "OPENING ESTABLISHING SHOT: begin high above the town, then smoothly descend toward the main square; reveal the episode's central event.",
         "GROUND-LEVEL TRACKING SHOT: move along a street between the existing buildings; show people, vehicles and the specific scene action.",
         "CLOSE DETAIL SHOT: focus on the exact object or activity described; use a gentle cinematic push-in and visible environmental movement.",
         "DYNAMIC ORBIT SHOT: make a smooth partial orbit around the location involved in this scene; clearly show what happens.",
-        "CLOSING WIDE SHOT: pull back to a beautiful elevated view of the whole town; end with a memorable visual."
+        "CLOSING WIDE SHOT: pull back to a beautiful elevated view of the whole town; end with a memorable visual.",
     ]
     building_list = ", ".join(
-        str(b.get("name", "building")) + " (type " + str(b.get("type", "house")) + ")"
-        for b in data.get("buildings", [])[:12]
+        str(building.get("name", "building"))
+        + " (type "
+        + str(building.get("type", "house"))
+        + ")"
+        for building in data.get("buildings", [])[:12]
     )
 
+    normalized = []
     for index, scene in enumerate(scenes, start=1):
         prompt = (
             "Create one original cinematic vertical 9:16 video shot for episode "
-            + str(data.get("episode", 1)) + " of a continuing fictional German miniature-city series. "
-            "CITY: " + str(data.get("city_name", "Neustadt")) +
-            ". Keep architecture, street layout, materials and warm cinematic color palette consistent. "
-            "CURRENT LANDMARKS: " + building_list + ". "
-            "EPISODE: " + str(data.get("title", "")) + ". "
-            "SCENE " + str(index) + " ACTION: " + str(scene) + ". "
-            "CAMERA: " + shot_directions[index-1] + " "
-            "Show this exact action clearly. Detailed realistic miniature sets, natural motion, "
+            + str(data.get("episode", 1))
+            + " of a continuing fictional German miniature-city series. "
+            "CITY: "
+            + str(data.get("city_name", "Neustadt"))
+            + ". Keep architecture, street layout, materials and warm cinematic color palette consistent. "
+            "CURRENT LANDMARKS: "
+            + building_list
+            + ". EPISODE: "
+            + str(data.get("title", ""))
+            + ". SCENE "
+            + str(index)
+            + " ACTION: "
+            + str(scene)
+            + ". CAMERA: "
+            + shot_directions[index - 1]
+            + " Show this exact action clearly. Detailed realistic miniature sets, natural motion, "
             "cinematic depth of field, smooth professional camera work and believable lighting. "
             "Do not add buildings or alter the town unless the scene explicitly describes a viewer-requested construction. "
             "No text, subtitles, labels, logos or watermarks."
         )[:1800]
 
-        project = _request("/text-to-video", api_key, {
-            "end_seconds": duration,
-            "aspect_ratio": "9:16",
-            "model": MODEL,
-            "resolution": RESOLUTION,
-            "audio": False,
-            "style": {"prompt": prompt},
-            "name": "AI ERIK Stadt Folge " + str(data.get("episode", 1)) + " Szene " + str(index),
-        })
-        project_id = project.get("id")
-        if not project_id:
-            raise RuntimeError("Magic Hour hat keine Projekt-ID zurückgegeben: " + json.dumps(project)[:400])
-        print("[VIDEO] Magic Hour-Szene " + str(index) + "/5 gestartet.", flush=True)
-        url = _wait_for_video(project_id, api_key)
-        raw = folder / ("scene_" + str(index) + ".mp4")
-        request = urllib.request.Request(url, headers={"User-Agent": "AI-ERIK-Stadt-Autopilot"})
-        with urllib.request.urlopen(request, timeout=120) as response, raw.open("wb") as target:
-            target.write(response.read())
+        try:
+            result = client.v1.text_to_video.generate(
+                end_seconds=CLIP_SECONDS,
+                aspect_ratio="9:16",
+                style={"prompt": prompt},
+                name="AI ERIK Stadt Folge "
+                + str(data.get("episode", 1))
+                + " Szene "
+                + str(index),
+                model=MODEL,
+                resolution=RESOLUTION,
+                audio=False,
+                wait_for_completion=True,
+                download_outputs=True,
+                download_directory=str(folder),
+            )
+        except Exception as exc:
+            status = _error_status(exc)
+            if status == 402:
+                raise FreeCreditsUnavailable(
+                    "Magic Hour meldet zu wenig Credits. Die lokale Animation wird verwendet."
+                ) from exc
+            if status == 401:
+                raise RuntimeError(
+                    "Magic Hour hat den API-Schlüssel abgelehnt (401). "
+                    "Bitte den Schlüssel im Developer Hub prüfen und das GitHub Secret "
+                    "MAGIC_HOUR_API_KEY aktualisieren."
+                ) from exc
+            raise RuntimeError("Magic Hour API-Fehler: " + str(exc)) from exc
+
+        status = getattr(result, "status", None)
+        if status != "complete":
+            error = getattr(result, "error", None)
+            detail = getattr(error, "message", str(error or "unbekannter Fehler"))
+            raise RuntimeError("Magic Hour-Szene " + str(index) + " endete mit " + str(status) + ": " + detail)
+
+        paths = getattr(result, "downloaded_paths", None) or []
+        if isinstance(paths, (str, Path)):
+            paths = [paths]
+        if not paths:
+            raise RuntimeError("Magic Hour hat die Szene fertiggestellt, aber keinen Downloadpfad geliefert.")
+
+        raw = Path(paths[0])
+        if not raw.is_absolute():
+            raw = Path.cwd() / raw
+        if not raw.exists():
+            raise RuntimeError("Magic Hour-Download wurde nicht gefunden: " + str(raw))
 
         normalized_path = folder / ("normalized_" + str(index) + ".mp4")
-        subprocess.run([
-            "ffmpeg", "-y", "-i", str(raw),
-            "-vf", "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=24,format=yuv420p",
-            "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-            "-movflags", "+faststart", str(normalized_path)
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.run(
+            [
+                "ffmpeg", "-y", "-i", str(raw),
+                "-vf", "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=24,format=yuv420p",
+                "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+                "-movflags", "+faststart", str(normalized_path),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
+        )
         normalized.append(normalized_path)
+        print("[VIDEO] Magic Hour-Szene " + str(index) + "/5 fertig.", flush=True)
 
     concat_file = folder / "concat.txt"
-    concat_file.write_text("".join("file '" + str(p.resolve()) + "'\n" for p in normalized), encoding="utf-8")
+    concat_file.write_text(
+        "".join("file '" + str(path.resolve()) + "'\n" for path in normalized),
+        encoding="utf-8",
+    )
     combined = Path(destination)
-    subprocess.run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
-        "-c", "copy", "-movflags", "+faststart", str(combined)
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
+            "-c", "copy", "-movflags", "+faststart", str(combined),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+    )
     return combined
