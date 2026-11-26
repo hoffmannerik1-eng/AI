@@ -108,16 +108,24 @@ def make_video(data):
     audio = OUT / "voice.mp3"
     asyncio.run(make_voice(data["script"], audio))
     video = OUT / "short.mp4"
-    # A simple 5-scene vertical video. Audio is mixed across the complete duration.
+    # Match the five visual scenes to the full narration length.
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(audio)],
+        check=True, capture_output=True, text=True
+    )
+    audio_seconds = max(1.0, float(probe.stdout.strip()))
+    scene_seconds = audio_seconds / len(frames)
     concat = OUT / "frames.txt"
     with concat.open("w", encoding="utf-8") as f:
         for p in frames:
-            f.write(f"file '{p.as_posix()}'\nduration 3\n")
+            f.write(f"file '{p.as_posix()}'\nduration {scene_seconds:.3f}\n")
         f.write(f"file '{frames[-1].as_posix()}'\n")
     subprocess.run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),"-i",str(audio),
                     "-vf","fps=30,format=yuv420p","-c:v","libx264","-preset","veryfast",
                     "-c:a","aac","-b:a","128k","-shortest","-movflags","+faststart",str(video)],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    log(f"Videolänge an Sprechertext angepasst: {audio_seconds:.1f} Sekunden")
     return video
 
 def upload(video, data):
