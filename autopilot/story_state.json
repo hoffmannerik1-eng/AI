@@ -1,5 +1,5 @@
 {
-  "episode": 2,
+  "episode": 3,
   "history": [
     {
       "episode": 1,
@@ -18,6 +18,15 @@
       "change": "In einer tiefen Unterwasserschlucht will Taucher Finn eine versunkene Truhe heben, wird aber von einem riesigen Steinfisch überrascht. Mit Kikos leuchtenden Korallenblasen lenken sie den Wächter ab und erwecken ein uraltes Meeresgeheimnis.",
       "video_id": "ykh9mT4MEtg",
       "created_at": "2026-11-26T18:44:46.512160+00:00"
+    },
+    {
+      "episode": 3,
+      "title": "Folge 3: Der Winddieb von Klippenhain",
+      "story": "Lio und Nia verfolgen einen riesigen Vogel, der ihr Windsegel stiehlt, und finden ihn über einem Nest. Als ein Sturm aufzieht, bauen sie gemeinsam mit dem Tier einen Schutzwall aus Schilf.",
+      "script": "Ein Schatten schnappt sich unser Segel – hey! Lio rennt los, Nia keucht hinterher. Auf der Klippe entdeckt sie den Dieb: ein riesiger Vogel, der das Tuch über sein Nest legt. Ein Sturm zieht auf! Gemeinsam flechten sie Schilf zu einem Windschutz. Der Vogel schenkt ihnen eine leuchtende Feder – und hebt ab.",
+      "change": "Lio und Nia verfolgen einen riesigen Vogel, der ihr Windsegel stiehlt, und finden ihn über einem Nest. Als ein Sturm aufzieht, bauen sie gemeinsam mit dem Tier einen Schutzwall aus Schilf.",
+      "video_id": "FDfKroKU6Nc",
+      "created_at": "2026-11-26T18:58:56.142870+00:00"
     }
   ],
   "processed_comments": []
