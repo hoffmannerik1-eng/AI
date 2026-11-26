@@ -51,7 +51,7 @@ def get_comments(state):
                 continue
             for it in items:
                 top=it["snippet"]["topLevelComment"]; cid=top["id"]
-                txt=re.sub(r"\\s+"," ",top["snippet"].get("textDisplay","")).strip()
+                txt=re.sub(r"\s+"," ",top["snippet"].get("textDisplay","")).strip()
                 if cid not in done and txt:
                     done.add(cid); out.append(txt[:300])
         state["processed_comments"]=list(done)[-1000:]
@@ -71,8 +71,8 @@ city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), descri
     def parse_json(text):
         text=(text or "").strip()
         if text.startswith("```"):
-            text=re.sub(r"^\`\`\`(?:json)?\\s*","",text,flags=re.I)
-            text=re.sub(r"\\s*\`\`\`$","",text)
+            text=re.sub(r"^\`\`\`(?:json)?\s*","",text,flags=re.I)
+            text=re.sub(r"\s*\`\`\`$","",text)
         left=text.find("{"); right=text.rfind("}")
         if left<0 or right<left: raise ValueError("KI lieferte kein JSON")
         return json.loads(text[left:right+1])
