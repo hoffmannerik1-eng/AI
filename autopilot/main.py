@@ -82,7 +82,7 @@ LETZTE FOLGEN – NICHT WIEDERHOLEN:
 {json.dumps(previous_stories,ensure_ascii=False)}
 NEUE ZUSCHAUERKOMMENTARE ALS OPTIONALE IDEEN:
 {json.dumps(comments,ensure_ascii=False)}
-Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wörter haben. Die ersten zwei Sekunden brauchen einen individuellen Hook. Der gesamte Film MUSS wie ein hochwertiger, farbenfroher 3D-Cartoon-Kinofilm aussehen: stilisierte Figuren mit klaren wiedererkennbaren Gesichtern, großen ausdrucksstarken Augen, überzeichneten aber liebevollen Emotionen, weichen Formen, detaillierten Cartoon-Umgebungen, dynamischer Körperbewegung, lebendiger Mimik, filmischer Beleuchtung und kräftigen Farben. KEIN Realfilm, KEINE fotorealistischen Menschen, KEINE bloßen Texttafeln oder Diashow. Erfinde 1-3 Hauptfiguren mit genauer Beschreibung von Aussehen, Kleidung, Farben und Persönlichkeit. Diese Figuren müssen in allen fünf Szenen exakt gleich aussehen. Erstelle genau 5 unterschiedliche animierte Szenen, die die Handlung in richtiger Reihenfolge zeigen, mit sichtbaren Aktionen und wechselnden Kameraperspektiven. Titel kurz, neugierig und nicht ähnlich zu früheren Titeln. Antworte nur mit JSON mit diesen Feldern: title (beginnt mit Folge {state.get('episode',0)+1}:), description (kurze Beschreibung als fiktive KI-Geschichte), script, story (1-2 Sätze über das neue Ereignis), visual_style (konkrete Beschreibung des einheitlichen Cartoon-Stils), characters (Liste mit name, appearance, clothing, personality), scenes (genau 5 kurze visuelle Szenen), hashtags (3-5)."""
+Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 50-65 deutsche Wörter haben. Die ersten zwei Sekunden brauchen einen individuellen Hook. Der gesamte Film MUSS wie ein hochwertiger, farbenfroher 3D-Cartoon-Kinofilm aussehen: stilisierte Figuren mit klaren wiedererkennbaren Gesichtern, großen ausdrucksstarken Augen, überzeichneten aber liebevollen Emotionen, weichen Formen, detaillierten Cartoon-Umgebungen, dynamischer Körperbewegung, lebendiger Mimik, filmischer Beleuchtung und kräftigen Farben. KEIN Realfilm, KEINE fotorealistischen Menschen, KEINE bloßen Texttafeln oder Diashow. Erfinde 1-3 Hauptfiguren mit genauer Beschreibung von Aussehen, Kleidung, Farben und Persönlichkeit. Diese Figuren müssen in allen fünf Szenen exakt gleich aussehen. Erstelle genau 5 unterschiedliche animierte Szenen, die die Handlung in richtiger Reihenfolge zeigen, mit sichtbaren Aktionen und wechselnden Kameraperspektiven. Titel kurz, neugierig und nicht ähnlich zu früheren Titeln. Antworte nur mit JSON mit diesen Feldern: title (beginnt mit Folge {state.get('episode',0)+1}:), description (kurze Beschreibung als fiktive KI-Geschichte), script, story (1-2 Sätze über das neue Ereignis), visual_style (konkrete Beschreibung des einheitlichen Cartoon-Stils), characters (Liste mit name, appearance, clothing, personality), scenes (genau 5 kurze visuelle Szenen), hashtags (3-5)."""
     def parse_json(text):
         text=(text or "").strip()
         if text.startswith("```"):
@@ -98,8 +98,8 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wört
             raise ValueError("KI-Ausgabe unvollständig")
         if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5:
             raise ValueError("Es müssen genau fünf Szenen sein")
-        if not 80<=len(str(obj["script"]).split())<=150:
-            raise ValueError("Skript muss zwischen 80 und 150 Wörtern haben")
+        if not 45<=len(str(obj["script"]).split())<=80:
+            raise ValueError("Skript muss zwischen 45 und 80 Wörtern haben, damit es zum 25-Sekunden-Cartoon passt")
         return obj
 
     # Gemini versuchen; bei Quota-Fehler automatisch zu OpenRouter wechseln.
@@ -243,25 +243,22 @@ def make_video(d):
         "-af",f"afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,seconds-2):.3f}:d=2",
         "-c:a","pcm_s16le",str(music)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
     magic_key=os.getenv("MAGIC_HOUR_API_KEY","").strip()
-    if magic_key:
-        log("Magic Hour Free-Video-KI wird geprüft.")
-        raw=OUT/"magic_hour_combined.mp4"
-        try:
-            generate_magic_hour_video(d,OUT,raw,clip_duration=max(5,math.ceil(seconds/5)))
-            subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
-                "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
-                "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
-                "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
-                "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
-            return video
-        except FreeCreditsUnavailable as exc:
-            log(str(exc))
-            log("Kostenlose Credits reichen nicht; lokale Animation wird als Fallback erstellt.")
-        except Exception as exc:
-            log("Magic Hour konnte nicht verwendet werden: " + str(exc))
-            log("Die Folge wird mit der lokalen Animation fertiggestellt, damit der Workflow nicht abbricht.")
-    else:
-        log("MAGIC_HOUR_API_KEY fehlt: lokale Animations-Fallback-Version wird verwendet.")
+    if not magic_key:
+        raise RuntimeError("Kein echter Cartoonfilm erzeugt: MAGIC_HOUR_API_KEY fehlt. Es wird absichtlich kein Texttafeln-Video hochgeladen.")
+    log("Magic Hour erstellt jetzt fünf animierte Cartoon-Szenen.")
+    raw=OUT/"magic_hour_combined.mp4"
+    try:
+        generate_magic_hour_video(d,OUT,raw,clip_duration=5)
+        subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
+            "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
+            "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
+            "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
+            "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
+        return video
+    except FreeCreditsUnavailable as exc:
+        raise RuntimeError("Es wurde kein Cartoon hochgeladen, weil die KI-Videoerstellung nicht freigegeben oder das Credit-Limit zu niedrig ist: "+str(exc)) from exc
+    except Exception as exc:
+        raise RuntimeError("Der Cartoonfilm konnte nicht mit der Video-KI erstellt werden. Es wird absichtlich kein Ersatz-Textvideo hochgeladen: "+str(exc)) from exc
     frames=render(d,seconds)
     subprocess.run(["ffmpeg","-y","-framerate","24","-i",str(frames/"frame_%05d.png"),"-i",str(audio),"-i",str(music),
         "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
