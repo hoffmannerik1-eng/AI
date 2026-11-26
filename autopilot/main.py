@@ -72,6 +72,51 @@ def get_comments(state):
         log(f"Kommentare konnten nicht gelesen werden: {str(e)[:180]}")
         return []
 
+def local_story_fallback(state, comments):
+    """Erstellt ohne externe Text-KI eine vollständige, sichere Story mit fünf Bildszenen."""
+    episode=int(state.get("episode",0))+1
+    heroes=[
+        ("Milo","blauer Hoodie und dunkle Haare","neugierig und mutig"),
+        ("Lina","roter Hoodie und braune Haare","clever und entschlossen"),
+        ("Noah","grüne Jacke und schwarze Haare","ruhig und erfinderisch"),
+        ("Mira","violette Jacke und blonde Haare","witzig und aufmerksam"),
+        ("Ben","orangefarbene Jacke und braune Haare","abenteuerlustig")
+    ]
+    name,clothes,personality=heroes[(episode-1)%len(heroes)]
+    plots=[
+        ("Das geheime Portal","In einer alten Höhle entdeckt {n} eine leuchtende Tür. Dahinter wartet ein Rätsel, das nur mit Mut und Köpfchen lösbar ist.",
+         ["{n} entdeckt eine geheimnisvolle Höhle zwischen hohen Felsen.","Ein goldenes Portal leuchtet plötzlich in der dunklen Wand auf.","{n} findet einen Schlüssel neben einer alten Truhe.","Das Portal öffnet sich und ein funkelnder Sternenweg erscheint.","{n} tritt hindurch und entdeckt eine fantastische neue Welt."]),
+        ("Der Roboter erwacht","Im verlassenen Labor findet {n} einen kleinen Roboter. Als er plötzlich erwacht, beginnt eine überraschende Suche nach seinem verlorenen Energie-Kristall.",
+         ["{n} betritt ein verlassenes Hightech-Labor voller blinkender Geräte.","Ein kleiner Roboter erwacht auf einem Arbeitstisch.","Der Roboter zeigt auf eine leere Energiehalterung.","Gemeinsam entdecken sie einen leuchtenden Kristall in einer Kiste.","Der Roboter startet und projiziert eine Karte zum nächsten Abenteuer."]),
+        ("Das Rätsel der Insel","Auf einer einsamen Insel entdeckt {n} eine geheimnisvolle Karte. Eine Reihe überraschender Hinweise führt zu einem Schatz, den niemand erwartet hat.",
+         ["{n} landet mit einem kleinen Boot an einer tropischen Insel.","Eine alte Karte liegt halb im Sand vergraben.","{n} folgt leuchtenden Markierungen durch den Dschungel.","Hinter einem Wasserfall entdeckt {n} eine goldene Schatztruhe.","In der Truhe liegt ein kleiner Kompass, der geheimnisvoll aufleuchtet."]),
+        ("Die Rakete ohne Pilot","Bei einem Schulausflug entdeckt {n} eine startbereite Mini-Rakete. Ein unerwartetes Signal führt zu einer lustigen Rettungsmission im Weltall.",
+         ["{n} entdeckt in einer Raumstation eine kleine silberne Rakete.","Ein blinkendes Signal erscheint auf dem Kontrollpult.","Die Rakete hebt ab und fliegt an einem blauen Planeten vorbei.","{n} entdeckt einen freundlichen kleinen Roboter im All.","Gemeinsam landen sie sicher und feiern ihre unerwartete Begegnung."]),
+        ("Das verschwundene Licht","Als im Wald alle Lichter verschwinden, folgt {n} einer geheimnisvollen Spur. Am Ende wartet eine freundliche Überraschung.",
+         ["{n} bemerkt, dass im Wald alle leuchtenden Blumen dunkel sind.","Eine Spur aus kleinen Lichtpunkten führt tiefer zwischen die Bäume.","{n} entdeckt eine alte Maschine unter den Wurzeln.","Mit einem gefundenen Kristall bringt {n} die Maschine wieder zum Leuchten.","Der ganze Wald erstrahlt und kleine Glühwürmchen tanzen um {n}."])
+    ]
+    title,story,scenes=plots[(episode-1)%len(plots)]
+    story=story.format(n=name)
+    scenes=[x.format(n=name) for x in scenes]
+    scripts=[
+        f"Mitten in der Höhle entdeckt {name} eine Tür, die eigentlich nicht existieren dürfte. Ein goldenes Licht flackert auf. Neben einer alten Truhe liegt ein geheimnisvoller Schlüssel. {name} zögert kurz, steckt ihn ins Schloss und hört ein tiefes Klicken. Das Portal öffnet sich. Dahinter wartet eine völlig neue Welt.",
+        f"Dieses Labor sollte längst verlassen sein. Doch als {name} den Raum betritt, bewegt sich plötzlich ein kleiner Roboter. Er sucht seinen Energie-Kristall. Gemeinsam durchsuchen sie das Labor und entdecken eine geheimnisvolle Kiste. Darin liegt der Kristall. Als der Roboter erwacht, erscheint eine Karte zu einem neuen Abenteuer.",
+        f"Niemand hatte diese Insel auf der Karte gefunden. Doch {name} entdeckt eine alte Karte im Sand. Leuchtende Zeichen führen durch den Dschungel bis zu einem Wasserfall. Dahinter wartet eine goldene Truhe. {name} öffnet sie gespannt. Statt Gold liegt darin ein Kompass, der auf etwas Geheimnisvolles zeigt.",
+        f"Plötzlich blinkt ein Warnsignal in der Raumstation. {name} entdeckt eine kleine Rakete und startet sie. Vorbei an einem blauen Planeten taucht ein kleiner Roboter auf. Er braucht Hilfe bei der Rückkehr. Gemeinsam finden sie den Weg. Die Landung gelingt perfekt und aus der Mission wird eine neue Freundschaft.",
+        f"Mitten im Wald verschwinden alle Lichter. {name} folgt einer Spur aus funkelnden Punkten und findet eine alte Maschine unter den Wurzeln. Ein Kristall passt genau in die Öffnung. Die Maschine beginnt zu leuchten. Augenblicklich erwacht der ganze Wald. Doch zwischen den Bäumen erscheint noch ein geheimnisvoller Lichtpunkt."
+    ]
+    script=scripts[(episode-1)%len(scripts)]
+    return {
+        "title":f"Folge {episode}: {title}",
+        "description":"Eine originelle Roblox-inspirierte Cartoon-Geschichte.",
+        "script":script,
+        "story":story,
+        "visual_style":"Hochwertiger 3D-Cartoon im Roblox-Look: blockige Figuren, klare Quaderformen, plastische Materialien, kräftige Farben, filmisches Licht, Hochformat 9:16.",
+        "characters":[{"name":name,"appearance":clothes,"clothing":clothes,"personality":personality}],
+        "scenes":scenes,
+        "hashtags":["#Roblox","#Shorts","#Cartoon","#Story","#AI"]
+    }
+
 def generate(state,comments):
     previous=state.get("history",[])[-30:]
     previous_stories=[{"episode":x.get("episode"),"title":x.get("title"),"story":x.get("story",""),"script":x.get("script","")[:700]} for x in previous]
@@ -183,8 +228,10 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 50-65 deutsche Wörte
                         continue
                     break
             log(f"OpenRouter-Modell {model} nicht verfügbar; nächstes kostenloses Modell wird versucht")
-        raise RuntimeError("Alle aktuell gelisteten kostenlosen KI-Modelle fehlgeschlagen: "+" | ".join(failures[-4:]))
-    raise RuntimeError("Keine KI verfügbar. GEMINI_API_KEY oder OPENROUTER_API_KEY in GitHub Secrets prüfen.")
+        log("Alle kostenlosen Text-KIs sind ausgefallen; lokale Story wird ohne API erstellt.")
+        return local_story_fallback(state,comments)
+    log("Keine Text-KI konfiguriert; lokale Story wird ohne API erstellt.")
+    return local_story_fallback(state,comments)
 
 async def voice(txt,path): await edge_tts.Communicate(txt,"de-DE-ConradNeural").save(str(path))
 
