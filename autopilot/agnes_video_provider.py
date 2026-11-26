@@ -101,20 +101,21 @@ def generate_video(data, output_dir, destination, clip_duration=5):
     folder.mkdir(parents=True, exist_ok=True)
     normalized = []
     characters = data.get("characters", [])
-    style = str(data.get("visual_style", "Colorful high-quality 3D animated family cartoon"))
+    style = str(data.get("visual_style", "Roblox story short: blocky low-poly avatars, smooth slightly plastic surfaces, vertical 9:16"))
     for index, scene in enumerate(scenes, start=1):
         prompt = (
-            "Create a polished, fully animated 3D cartoon movie shot in vertical 9:16. "
-            "Colorful family-friendly stylized animation, expressive faces, consistent "
-            "character designs, clear body movement, lively gestures, smooth cinematic "
-            "camera motion, detailed cartoon environment and cinematic lighting. "
-            "Not live action, not photorealistic, not a slideshow, no captions, no text, "
-            "no logos or watermarks. Keep all characters visually consistent across shots. "
+            "Create a fully animated vertical 9:16 Roblox story-short scene. "
+            "MANDATORY STYLE: classic Roblox-like block characters with a cuboid head, torso, arms and legs; simple block joints; smooth surfaces with a subtle plastic look; simple textures; clean low-poly 3D geometry. "
+            "Characters must perform readable human-like actions with Roblox animation: walk, run, turn, sit, reach, grab, point, react and interact with each other and objects as the scene requires. Use expressive but simple Roblox faces. "
+            "The location, buildings, props, weather, time of day and lighting MUST be chosen from the actual story and this shot; do not default to a suburban street, bicycle or any example setting unless explicitly required by the story. "
+            "Show the actual event happening, not a character merely posing. Preserve the exact same character appearance, proportions, hair and clothing across all five clips. "
+            "NO subtitles, NO captions, NO on-screen words, NO letters, NO signs with readable text, NO title cards, NO logos, NO watermarks. No live action, no photorealism, no other visual style, no slideshow. "
+            "Use a suitable third-person camera that follows or frames the action; vary framing naturally when the story changes. "
             "VISUAL STYLE: " + style + ". CHARACTER DESIGNS: " + json.dumps(characters, ensure_ascii=False) +
             ". EPISODE: " + str(data.get("title", "")) +
             ". STORY CONTEXT: " + str(data.get("story", "")) +
             ". THIS SHOT: " + str(scene) +
-            ". Show visible movement and animate the described action."
+            ". Animate the described action continuously with visible body movement and interaction."
         )
         payload = {
             "model": MODEL,
