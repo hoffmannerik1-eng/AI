@@ -57,16 +57,38 @@ def generate_video(data, output_dir, destination):
     folder = Path(output_dir) / "runway_clips"
     folder.mkdir(parents=True, exist_ok=True)
     normalized = []
+    # Jeder Clip bekommt eine eigene Bildregie. So entstehen unterschiedliche Einstellungen
+    # derselben fortlaufenden Stadt statt fünf nahezu gleicher Stadt-Totalen.
+    shot_directions = [
+        "OPENING ESTABLISHING SHOT: begin high above the town, then smoothly descend toward the main square; reveal the episode's central event.",
+        "GROUND-LEVEL TRACKING SHOT: move along a street between the existing buildings; show people, vehicles and the specific scene action.",
+        "CLOSE DETAIL SHOT: focus on the exact object or activity described; use a gentle cinematic push-in and visible environmental movement.",
+        "DYNAMIC ORBIT SHOT: make a smooth partial orbit around the location involved in this scene; clearly show what changes or happens.",
+        "CLOSING WIDE SHOT: pull back to a beautiful elevated view of the whole town at a different time-of-day mood; end with a memorable visual."
+    ]
+    normalized = []
     for index, scene in enumerate(scenes[:5], start=1):
+        building_list = ", ".join(
+            str(b.get("name", "building")) + " (type " + str(b.get("type", "house")) + ")"
+            for b in data.get("buildings", [])[:12]
+        )
         prompt = (
-            "Create a polished vertical 9:16 cinematic video for a fictional German "
-            "isometric 2.5D city-builder series. Keep a coherent visual identity: "
-            "beautiful miniature European town, detailed streets, warm cinematic lighting, "
-            "smooth camera movement, high visual quality. No text, captions, logos or watermarks. "
-            "City: " + str(data.get("city_name", "Neustadt")) + ". Existing buildings: " +
-            ", ".join(str(b.get("name", "building")) for b in data.get("buildings", [])[:12]) +
-            ". Scene action: " + str(scene)
-        )[:1000]
+            "Generate ONE original 5-second cinematic video shot, vertical 9:16, for episode "
+            + str(data.get("episode", 1)) + " of a continuing fictional German miniature-city series. "
+            "This shot must visually depict ONLY this scene's action, not a generic montage. "
+            "CITY IDENTITY: " + str(data.get("city_name", "Neustadt")) +
+            ", a coherent miniature European town with the same architecture, street layout, "
+            "materials and warm cinematic color palette throughout this episode. "
+            "CURRENT CITY LANDMARKS: " + building_list + ". "
+            "EPISODE STORY: " + str(data.get("title", "")) + ". "
+            "SCENE " + str(index) + " OF 5 ACTION: " + str(scene) + ". "
+            "CAMERA DIRECTION: " + shot_directions[index-1] + " "
+            "Make the described action unmistakable and visually different from the other shots. "
+            "Detailed realistic miniature sets, natural motion, cinematic depth of field, "
+            "smooth professional camera work, rich but believable lighting. "
+            "Do not add new buildings or change the town layout unless the scene explicitly describes "
+            "a viewer-requested construction. No text, subtitles, labels, logos or watermarks."
+        )[:1800]
         task = _request("/text_to_video", api_key, {
             "model": model, "promptText": prompt, "ratio": "720:1280", "duration": 5
         })
