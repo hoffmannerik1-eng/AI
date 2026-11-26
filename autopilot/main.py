@@ -82,7 +82,7 @@ LETZTE FOLGEN – NICHT WIEDERHOLEN:
 {json.dumps(previous_stories,ensure_ascii=False)}
 NEUE ZUSCHAUERKOMMENTARE ALS OPTIONALE IDEEN:
 {json.dumps(comments,ensure_ascii=False)}
-Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wörter haben. Die ersten zwei Sekunden brauchen einen individuellen Hook. Erstelle genau 5 visuelle Szenen, die die Handlung in der richtigen Reihenfolge zeigen. Jede Szene braucht einen konkreten Schauplatz, Figuren und eine sichtbare Aktion. Keine Stadt- oder Gebäudebau-Simulation. Titel kurz, neugierig und nicht ähnlich zu früheren Titeln. Antworte nur mit JSON mit diesen Feldern: title (beginnt mit Folge {state.get('episode',0)+1}:), description (kurze Beschreibung als fiktive KI-Geschichte), script, story (1-2 Sätze über das neue Ereignis), scenes (genau 5 kurze visuelle Szenen), hashtags (3-5)."""
+Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wörter haben. Die ersten zwei Sekunden brauchen einen individuellen Hook. Der gesamte Film MUSS wie ein hochwertiger, farbenfroher 3D-Cartoon-Kinofilm aussehen: stilisierte Figuren mit klaren wiedererkennbaren Gesichtern, großen ausdrucksstarken Augen, überzeichneten aber liebevollen Emotionen, weichen Formen, detaillierten Cartoon-Umgebungen, dynamischer Körperbewegung, lebendiger Mimik, filmischer Beleuchtung und kräftigen Farben. KEIN Realfilm, KEINE fotorealistischen Menschen, KEINE bloßen Texttafeln oder Diashow. Erfinde 1-3 Hauptfiguren mit genauer Beschreibung von Aussehen, Kleidung, Farben und Persönlichkeit. Diese Figuren müssen in allen fünf Szenen exakt gleich aussehen. Erstelle genau 5 unterschiedliche animierte Szenen, die die Handlung in richtiger Reihenfolge zeigen, mit sichtbaren Aktionen und wechselnden Kameraperspektiven. Titel kurz, neugierig und nicht ähnlich zu früheren Titeln. Antworte nur mit JSON mit diesen Feldern: title (beginnt mit Folge {state.get('episode',0)+1}:), description (kurze Beschreibung als fiktive KI-Geschichte), script, story (1-2 Sätze über das neue Ereignis), visual_style (konkrete Beschreibung des einheitlichen Cartoon-Stils), characters (Liste mit name, appearance, clothing, personality), scenes (genau 5 kurze visuelle Szenen), hashtags (3-5)."""
     def parse_json(text):
         text=(text or "").strip()
         if text.startswith("```"):
@@ -93,7 +93,7 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wört
         return json.loads(text[left:right+1])
 
     def check(obj):
-        keys=["title","description","script","scenes","story","hashtags"]
+        keys=["title","description","script","scenes","story","visual_style","characters","hashtags"]
         if not isinstance(obj,dict) or any(k not in obj for k in keys):
             raise ValueError("KI-Ausgabe unvollständig")
         if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5:
@@ -111,7 +111,7 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wört
             raw=getattr(response,"text",None)
             if raw and raw.strip():
                 obj=check(parse_json(raw))
-                log("Gemini hat die Stadtfolge geplant")
+                log("Gemini hat die Cartoon-Story geplant")
                 return obj
             log("Gemini lieferte eine leere Antwort; OpenRouter wird versucht")
         except Exception as e:
@@ -146,7 +146,7 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wört
             # Erst mit JSON-Modus versuchen. Einige kostenlose Provider unterstützen
             # response_format nicht; dann dieselbe Anfrage ohne diese Option wiederholen.
             base_payload={"model":model,"messages":[
-                {"role":"system","content":"Du erstellst eine sichere fiktive Stadt. Antworte ausschließlich mit einem vollständigen JSON-Objekt."},
+                {"role":"system","content":"Du schreibst einen sicheren, originellen Cartoon-Kurzfilm. Antworte ausschließlich mit einem vollständigen JSON-Objekt."},
                 {"role":"user","content":prompt}],
                 "temperature":0.7,"max_tokens":3000}
             for json_mode in (True,False):
@@ -168,7 +168,7 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 90-120 deutsche Wört
                     if not isinstance(raw,str) or not raw.strip():
                         raise ValueError("Modell lieferte leeren Inhalt")
                     obj=check(parse_json(raw))
-                    log(f"OpenRouter-Modell {model} hat die Stadtfolge erstellt")
+                    log(f"OpenRouter-Modell {model} hat die Cartoon-Story erstellt")
                     return obj
                 except Exception as e:
                     detail=str(e)
