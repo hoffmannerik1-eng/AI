@@ -669,12 +669,12 @@ def update_learning(state,data):
 
 
 def main():
-    log("AI ERIK MULTI-FORMAT SHORTS-AUTOPILOT gestartet.")
+    log("AI ERIK DISCIPLINE VS EGO STICKMAN-SHORTS gestartet.")
     state=load_state(); dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
     deadline=time.monotonic()+5.5*60*60; episode_dir=OUT/"episodes"; episode_dir.mkdir(exist_ok=True); completed=0
     while time.monotonic()<deadline:
         ideas=get_comments(state)
-        trend_data=research_shorts_trends(state)
+        trend_data={"mode":"discipline_vs_ego_only"}
         data=generate(state,ideas,trend_data); data["episode"]=int(state.get("episode",0))+1
         log(f"Neue Folge {data['episode']}: {data['title']} | {data.get('topic')} | {data.get('format')}")
         video=make_video(data); verify_video(video)
