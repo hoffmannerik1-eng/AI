@@ -187,6 +187,119 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 50-65 deutsche Wörte
     raise RuntimeError("Keine KI verfügbar. GEMINI_API_KEY oder OPENROUTER_API_KEY in GitHub Secrets prüfen.")
 
 async def voice(txt,path): await edge_tts.Communicate(txt,"de-DE-ConradNeural").save(str(path))
+
+def create_local_cartoon(raw,d,seconds):
+    """Kostenloser Offline-Fallback: fünf animierte Roblox-inspirierte Szenen."""
+    from PIL import Image, ImageDraw
+    import math, shutil
+
+    width,height,fps=540,960,12
+    frames_dir=OUT/"local_frames"
+    if frames_dir.exists():
+        shutil.rmtree(frames_dir)
+    frames_dir.mkdir(parents=True)
+    scenes=d.get("scenes") or [{} for _ in range(5)]
+    characters=d.get("characters") or []
+    if not characters:
+        characters=[{"name":"Figur","appearance":"dunkle Haare","clothing":"blaues Oberteil"}]
+    characters=characters[:2]
+    palettes=[
+        ((90,165,220),(210,235,250),(65,125,75)),
+        ((255,170,95),(255,220,160),(105,125,75)),
+        ((85,95,155),(175,185,225),(55,60,100)),
+        ((65,165,170),(175,225,220),(35,105,115)),
+        ((145,115,190),(220,190,230),(75,65,105))
+    ]
+    outfit_colors=[(45,115,220),(225,85,65),(70,165,110),(170,95,210)]
+    skin=(235,190,150)
+
+    def draw_avatar(draw,cx,base,idx,phase,scale=1.0):
+        spec=characters[idx % len(characters)]
+        clothing=str(spec.get("clothing","")).lower()
+        color=outfit_colors[(sum(ord(c) for c in clothing)+idx*3)%len(outfit_colors)]
+        sway=math.sin(phase*2.0+idx)*14*scale
+        step=math.sin(phase*3.0+idx)*20*scale
+        def rect(box,fill):
+            draw.rectangle(tuple(int(v) for v in box),fill=fill)
+        head_w,head_h=68*scale,72*scale
+        head_x=cx-head_w/2
+        head_y=base-300*scale
+        # legs
+        rect((cx-28*scale,base-125*scale,cx-5*scale+step,base), (35,45,70))
+        rect((cx+5*scale-step,base-125*scale,cx+28*scale,base), (35,45,70))
+        # torso and arms
+        rect((cx-48*scale,base-245*scale,cx+48*scale,base-125*scale),color)
+        rect((cx-78*scale+sway,base-238*scale,cx-50*scale+sway,base-135*scale),(color[0]//2,color[1]//2,color[2]//2))
+        rect((cx+50*scale-sway,base-238*scale,cx+78*scale-sway,base-135*scale),(color[0]//2,color[1]//2,color[2]//2))
+        draw.rectangle((cx-78*scale+sway,base-145*scale,cx-50*scale+sway,base-115*scale),fill=skin)
+        draw.rectangle((cx+50*scale-sway,base-145*scale,cx+78*scale-sway,base-115*scale),fill=skin)
+        # square head, hair and simple face
+        rect((head_x,head_y,head_x+head_w,head_y+head_h),skin)
+        hair=(55,42,35)
+        rect((head_x,head_y,head_x+head_w,head_y+18*scale),hair)
+        draw.rectangle((head_x,head_y+8*scale,head_x+13*scale,head_y+32*scale),fill=hair)
+        draw.rectangle((head_x+head_w-13*scale,head_y+8*scale,head_x+head_w,head_y+32*scale),fill=hair)
+        eye_y=head_y+39*scale
+        draw.ellipse((cx-17*scale,eye_y,cx-9*scale,eye_y+8*scale),fill=(25,25,30))
+        draw.ellipse((cx+9*scale,eye_y,cx+17*scale,eye_y+8*scale),fill=(25,25,30))
+        draw.line((cx-8*scale,head_y+57*scale,cx+8*scale,head_y+57*scale),fill=(120,55,55),width=max(1,int(3*scale)))
+
+    frame_no=0
+    for scene_index in range(5):
+        scene_text=str(scenes[scene_index] if scene_index < len(scenes) else "").lower()
+        sky,glow,ground=palettes[scene_index]
+        if any(w in scene_text for w in ("wald","forest","baum","dschungel")):
+            sky,glow,ground=(90,155,190),(190,220,150),(65,115,55)
+        elif any(w in scene_text for w in ("meer","ocean","wasser","strand","boot")):
+            sky,glow,ground=(75,155,205),(190,225,235),(35,125,165)
+        elif any(w in scene_text for w in ("weltall","space","planet","mond","stern")):
+            sky,glow,ground=(18,22,60),(95,85,150),(40,42,85)
+        elif any(w in scene_text for w in ("schule","stadt","haus","straße","labor")):
+            sky,glow,ground=(125,175,220),(220,230,235),(100,110,125)
+        count=max(1,round((seconds/5)*fps))
+        for local_frame in range(count):
+            phase=local_frame/max(1,count-1)*math.pi*2
+            img=Image.new("RGB",(width,height),sky)
+            draw=ImageDraw.Draw(img)
+            # Lichtschein und einfache, zur Szene passende Umgebung
+            draw.ellipse((330,90,455,215),fill=glow)
+            for cloud_x in (45,245,445):
+                offset=int(math.sin(phase+cloud_x)*12)
+                draw.ellipse((cloud_x-45+offset,190,cloud_x+45+offset,225),fill=(235,240,245))
+                draw.ellipse((cloud_x-20+offset,170,cloud_x+25+offset,225),fill=(235,240,245))
+            if "weltall" in scene_text or "space" in scene_text or "planet" in scene_text:
+                for sx,sy in ((55,110),(160,280),(420,330),(480,500),(100,450)):
+                    draw.ellipse((sx,sy,sx+5,sy+5),fill=(255,255,255))
+                draw.ellipse((355,270,490,405),fill=(145,115,190))
+                draw.ellipse((375,290,470,390),fill=(100,90,160))
+            elif any(w in scene_text for w in ("wald","forest","baum","dschungel")):
+                for tx in (35,470):
+                    draw.rectangle((tx+20,480,tx+45,720),fill=(105,70,45))
+                    draw.ellipse((tx-35,380,tx+100,535),fill=(45,125,65))
+            elif any(w in scene_text for w in ("meer","ocean","wasser","strand","boot")):
+                for wy in (560,610,660):
+                    draw.arc((0,wy,600,wy+70),0,180,fill=(190,235,245),width=7)
+            else:
+                draw.rectangle((55,430,160,680),fill=(175,185,195))
+                draw.rectangle((75,455,105,505),fill=(100,165,220))
+                draw.rectangle((115,455,145,505),fill=(100,165,220))
+                draw.rectangle((365,390,475,680),fill=(195,180,155))
+                draw.polygon(((350,395),(420,315),(490,395)),fill=(125,65,65))
+            draw.rectangle((0,700,width,height),fill=ground)
+            # Figuren bleiben über alle Szenen hinweg gleich und bewegen sich sichtbar.
+            for ci in range(len(characters)):
+                cx=width*(0.42 if ci==0 else 0.70)+math.sin(phase+ci)*24
+                draw_avatar(draw,cx,785,ci,phase+scene_index*0.8,1.0)
+            # Ein animiertes Objekt pro Szene als sichtbarer Handlungspunkt.
+            obj_x=int(width*0.5+math.sin(phase*1.4)*90)
+            draw.ellipse((obj_x-24,625,obj_x+24,673),fill=(255,215,65),outline=(255,245,180),width=4)
+            img.save(frames_dir/f"frame_{frame_no:05d}.png",quality=90)
+            frame_no+=1
+    subprocess.run(["ffmpeg","-y","-loglevel","error","-framerate",str(fps),
+        "-i",str(frames_dir/"frame_%05d.png"),"-c:v","libx264","-preset","ultrafast",
+        "-crf","24","-pix_fmt","yuv420p","-r","24",str(raw)],check=True)
+    log("Lokaler Gratis-Fallback hat fünf animierte Szenen erstellt.")
+
 def make_video(d):
     audio=OUT/"voice.mp3"; asyncio.run(voice(d["script"],audio))
     p=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",str(audio)],capture_output=True,text=True,check=True)
@@ -209,7 +322,9 @@ def make_video(d):
         generate_agnes_video(d,OUT,raw,clip_duration=5)
         log("Agnes hat alle fünf Szenen fertiggestellt.")
     except AgnesGenerationDisabled as exc:
-        raise RuntimeError("Agnes ist bewusst nicht freigegeben. Es wird kein anderer Anbieter automatisch gestartet: "+str(exc)) from exc
+        log("Agnes ist absichtlich deaktiviert: "+str(exc)[:220])
+        log("Es wird kein kostenpflichtiger Ersatzanbieter gestartet; lokaler Gratis-Fallback folgt.")
+        create_local_cartoon(raw,d,seconds)
     except Exception as agnes_exc:
         log("Agnes ist fehlgeschlagen: "+str(agnes_exc)[:300])
         log("Magic Hour wird als Ersatz versucht; Freigabe und Creditlimit werden geprüft.")
@@ -217,9 +332,13 @@ def make_video(d):
             generate_magic_hour_video(d,OUT,raw,clip_duration=5)
             log("Magic Hour hat alle fünf Ersatzszenen fertiggestellt.")
         except FreeCreditsUnavailable as mh_exc:
-            raise RuntimeError("Agnes ist fehlgeschlagen; Magic Hour wurde durch die Sicherheits-/Creditgrenze gestoppt: "+str(mh_exc)) from mh_exc
+            log("Magic Hour nicht verfügbar (z.B. zu wenig Credits): "+str(mh_exc)[:260])
+            log("Keine weiteren Credits werden angefordert; lokaler Gratis-Fallback folgt.")
+            create_local_cartoon(raw,d,seconds)
         except Exception as mh_exc:
-            raise RuntimeError("Beide Videoanbieter sind fehlgeschlagen. Agnes: "+str(agnes_exc)[:220]+" | Magic Hour: "+str(mh_exc)[:220]) from mh_exc
+            log("Magic Hour fehlgeschlagen: "+str(mh_exc)[:260])
+            log("Lokaler Gratis-Fallback folgt.")
+            create_local_cartoon(raw,d,seconds)
 
     # Gemeinsame Tonmischung für beide Videoanbieter.
     subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
