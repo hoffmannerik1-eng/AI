@@ -101,21 +101,26 @@ def generate_video(data, output_dir, destination, clip_duration=5):
     folder.mkdir(parents=True, exist_ok=True)
     normalized = []
     characters = data.get("characters", [])
-    style = str(data.get("visual_style", "Roblox story short: blocky low-poly avatars, smooth slightly plastic surfaces, vertical 9:16"))
+    style = str(data.get("visual_style", "High-quality animated short, selected to fit the story"))
+    edit_plan = data.get("edit_plan") or []
+    sound_plan = data.get("sound_plan") or []
     for index, scene in enumerate(scenes, start=1):
+        edit = edit_plan[index - 1] if len(edit_plan) >= index else "Use a clear, purposeful cinematic cut."
+        sound = sound_plan[index - 1] if len(sound_plan) >= index else "Use original, rights-cleared sound design."
         prompt = (
-            "Create a fully animated vertical 9:16 Roblox story-short scene. "
-            "MANDATORY STYLE: classic Roblox-like block characters with a cuboid head, torso, arms and legs; simple block joints; smooth surfaces with a subtle plastic look; simple textures; clean low-poly 3D geometry. "
-            "Characters must perform readable human-like actions with Roblox animation: walk, run, turn, sit, reach, grab, point, react and interact with each other and objects as the scene requires. Use expressive but simple Roblox faces. "
-            "The location, buildings, props, weather, time of day and lighting MUST be chosen from the actual story and this shot; do not default to a suburban street, bicycle or any example setting unless explicitly required by the story. "
-            "Show the actual event happening, not a character merely posing. Preserve the exact same character appearance, proportions, hair and clothing across all five clips. "
-            "NO subtitles, NO captions, NO on-screen words, NO letters, NO signs with readable text, NO title cards, NO logos, NO watermarks. No live action, no photorealism, no other visual style, no slideshow. "
-            "Use a suitable third-person camera that follows or frames the action; vary framing naturally when the story changes. "
+            "Create a fully animated vertical 9:16 short-video scene in the exact visual style described below. "
+            "Do NOT force Roblox, block characters or any fixed animation style unless the selected visual style explicitly asks for it. "
+            "Show the actual event happening, not a character merely posing. Keep recurring characters, objects, colors and locations consistent with the character designs and story. "
+            "Choose location, props, weather, time of day and lighting from the actual scene. "
+            "No subtitles, captions, on-screen words, readable letters, title cards, logos or watermarks. "
+            "Use the scene-specific camera and edit direction; vary framing naturally and make the action readable. "
             "VISUAL STYLE: " + style + ". CHARACTER DESIGNS: " + json.dumps(characters, ensure_ascii=False) +
             ". EPISODE: " + str(data.get("title", "")) +
             ". STORY CONTEXT: " + str(data.get("story", "")) +
             ". THIS SHOT: " + str(scene) +
-            ". Animate the described action continuously with visible body movement and interaction."
+            ". EDIT AND CAMERA PLAN: " + str(edit) +
+            ". SOUND DESIGN INTENTION (audio is mixed later): " + str(sound) +
+            ". Animate the described action continuously with clear movement and interaction."
         )
         payload = {
             "model": MODEL,
