@@ -1,4 +1,4 @@
-import os,re,json,asyncio,subprocess,math,urllib.request
+import os,re,json,asyncio,subprocess,math,urllib.request,time,shutil
 from pathlib import Path
 from datetime import datetime,timezone
 from PIL import Image,ImageDraw,ImageFont
@@ -531,21 +531,36 @@ def upload(video,d):
     return r.get("id")
 
 def main():
-    log("AI ERIK STORY-AUTOPILOT gestartet")
+    log("AI ERIK STORY-AUTOPILOT gestartet – Serienmodus aktiv")
     state=load_state()
-    ideas=get_comments(state)
-    d=generate(state,ideas)
-    d["episode"]=int(state.get("episode",0))+1
-    log(f"Neue Geschichte | Folge {d['episode']} | {d['title']}")
-    video=make_video(d)
-    verify_video(video)
     dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
-    vid=None if dry else upload(video,d)
-    state.update({"episode":d["episode"]})
-    state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"story":d.get("story",""),"script":d.get("script",""),"change":d.get("story",""),"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
-    state["history"]=state["history"][-100:]
-    STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
-    (OUT/"latest.json").write_text(json.dumps({"title":d["title"],"episode":d["episode"],"video_id":vid,"story":d.get("story","")},ensure_ascii=False,indent=2),encoding="utf-8")
-    log("Geschichte fertig; Episodenverlauf gespeichert. "+("Video wartet als Artifact auf Freigabe." if dry else "Video wurde hochgeladen."))
+    # GitHub Actions hat ein Zeitlimit von 6 Stunden. Wir beenden vorher
+    # sauber, damit Episodenverlauf und Videos noch gespeichert werden können.
+    deadline=time.monotonic()+5.5*60*60
+    episode_dir=OUT/"episodes"
+    episode_dir.mkdir(exist_ok=True)
+    completed=0
 
+    while time.monotonic()<deadline:
+        ideas=get_comments(state)
+        d=generate(state,ideas)
+        d["episode"]=int(state.get("episode",0))+1
+        log(f"Neue Geschichte | Folge {d['episode']} | {d['title']}")
+        video=make_video(d)
+        verify_video(video)
+        vid=None if dry else upload(video,d)
+
+        # Jede fertige Folge separat aufbewahren, bevor die nächste beginnt.
+        archive=episode_dir/f"episode_{d['episode']:05d}.mp4"
+        shutil.copy2(video,archive)
+
+        state.update({"episode":d["episode"]})
+        state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"story":d.get("story",""),"script":d.get("script",""),"change":d.get("story",""),"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
+        state["history"]=state["history"][-100:]
+        STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
+        (OUT/"latest.json").write_text(json.dumps({"title":d["title"],"episode":d["episode"],"video_id":vid,"story":d.get("story","")},ensure_ascii=False,indent=2),encoding="utf-8")
+        completed+=1
+        log(f"Folge {d['episode']} fertig und gespeichert. Starte automatisch die nächste Folge.")
+
+    log(f"Serienlauf beendet: {completed} neue Folge(n). Episodenverlauf gespeichert. "+("Videos liegen als Artifact bereit." if dry else "Videos wurden hochgeladen."))
 if __name__=="__main__": main()
