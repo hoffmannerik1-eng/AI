@@ -20,12 +20,8 @@ def load_state():
     if STATE.exists():
         try: return json.loads(STATE.read_text(encoding="utf-8"))
         except Exception: pass
-    return {"city_name":"Neustadt","episode":0,"population":120,"buildings":[
-        {"name":"Rathaus","type":"rathaus","level":2,"x":0,"y":0},
-        {"name":"Wohnhaus","type":"haus","level":1,"x":1,"y":0},
-        {"name":"Café","type":"cafe","level":1,"x":-1,"y":0},
-        {"name":"Schule","type":"schule","level":1,"x":0,"y":1},
-        {"name":"Park","type":"park","level":1,"x":1,"y":1}],"history":[],"processed_comments":[]}
+    return {"city_name":"Neustadt","episode":0,"population":1,"buildings":[
+        {"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}],"history":[],"processed_comments":[]}
 
 def yt_service():
     keys=["YOUTUBE_CLIENT_ID","YOUTUBE_CLIENT_SECRET","YOUTUBE_REFRESH_TOKEN"]
@@ -58,10 +54,10 @@ def get_comments(state):
 
 def generate(state,comments):
     prompt=f"""Du bist die kreative Stadt-KI einer fortlaufenden fiktiven Stadt für deutsche YouTube Shorts.
-Erfinde und entwickle dieselbe Stadt über viele Folgen weiter. Nutze sinnvolle, freundliche Zuschauerwünsche aus den Kommentaren; ignoriere private, beleidigende, gefährliche oder unpassende Wünsche. Keine echten Personen oder privaten Daten.
+Entwickle dieselbe fiktive Stadt über viele Folgen weiter. Zu Beginn gibt es AUSSCHLIESSLICH ein Rathaus. Die Stadt darf ausschließlich durch passende Zuschauerideen aus den neuen Kommentaren wachsen: Baue ein Gebäude oder verbessere etwas nur, wenn ein konkreter Kommentar genau das vorschlägt. Ohne passenden Kommentar darf kein Gebäude hinzukommen und kein Gebäude verbessert werden. Wenn es keine passenden Kommentare gibt, erzähle eine kleine Geschichte rund um die vorhandenen Gebäude, ohne die Stadt baulich zu verändern. Ignoriere private, beleidigende, gefährliche oder unpassende Wünsche. Keine echten Personen oder privaten Daten.
 STADTSTAND: {json.dumps(state,ensure_ascii=False)}
 NEUE KOMMENTARE: {json.dumps(comments,ensure_ascii=False)}
-Erstelle Folge {state.get('episode',0)+1}. Zeige eine kleine Geschichte und eine sichtbare Stadtveränderung. Maximal 2 neue Gebäude/Upgrades je Folge, bestehende Gebäude beibehalten. Antworte NUR JSON mit:
+Erstelle Folge {state.get('episode',0)+1}. Maximal 2 neue Gebäude/Upgrades je Folge; bestehende Gebäude beibehalten. Antworte NUR JSON mit:
 city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), description (Hinweis fiktive KI-Stadt), script (75-105 deutsche Wörter), scenes (genau 5 kurze Szenen), buildings (vollständige Liste max 18; jedes Objekt name,type aus rathaus/haus/hochhaus/cafe/schule/park/shop/feuerwehr/polizei/krankenhaus/bahnhof/stadion/schwimmbad/bruecke, level 1-3, x und y ganze Zahlen -3 bis 3; keine doppelten Koordinaten), population (50-50000), change_summary, hashtags (3-5)."""
     raw=""
     if GEMINI:
@@ -86,6 +82,9 @@ city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), descri
     need=["city_name","title","description","script","scenes","buildings","population","change_summary","hashtags"]
     if any(k not in d for k in need) or len(d["scenes"])!=5 or not 45<=len(d["script"].split())<=140: raise ValueError("KI-Ausgabe hat die Qualitätsprüfung nicht bestanden")
     d["buildings"]=d["buildings"][:18]
+    # Ohne neue Zuschauerkommentare bleibt die Stadt baulich unverändert.
+    if not comments:
+        d["buildings"]=state.get("buildings",[{"name":"Rathaus","type":"rathaus","level":1,"x":0,"y":0}])
     return d
 
 def font(n,b=False):
@@ -156,7 +155,7 @@ def upload(video,d):
     yt=yt_service()
     if not yt: raise RuntimeError("YouTube-OAuth-Secrets fehlen")
     body={"snippet":{"title":d["title"][:100],"description":d["description"]+"\\n\\n"+" ".join(d["hashtags"]),"categoryId":"20","defaultLanguage":"de"},
-        "status":{"privacyStatus":PRIVACY if PRIVACY in ("private","unlisted","public") else "private","selfDeclaredMadeForKids":False}}
+        "status":{"privacyStatus":PRIVACY if PRIVACY in ("private","unlisted","public") else "private"}}
     r=yt.videos().insert(part="snippet,status",body=body,media_body=MediaFileUpload(str(video),mimetype="video/mp4",resumable=True)).execute()
     return r.get("id")
 
