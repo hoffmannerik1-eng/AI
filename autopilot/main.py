@@ -7,6 +7,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from agnes_video_provider import generate_video as generate_agnes_video, AgnesGenerationDisabled
+from video_provider import generate_video as generate_magic_hour_video, FreeCreditsUnavailable
 
 ROOT=Path(__file__).parent
 OUT=ROOT/"output"; OUT.mkdir(exist_ok=True)
@@ -198,17 +199,35 @@ def make_video(d):
         "-c:a","pcm_s16le",str(music)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
     agnes_key=os.getenv("AGNES_API_KEY","").strip()
     raw=OUT/"video_ai_combined.mp4"
+
+    # Agnes ist der Hauptanbieter. Magic Hour wird nur bei einem echten
+    # Agnes-Fehler versucht und prüft selbst Freigabe sowie Episoden-Creditlimit.
     try:
         if not agnes_key:
-            raise RuntimeError("AGNES_API_KEY fehlt. Bitte als GitHub Secret eintragen.")
-        log("Agnes AI Video 2.5 Flash erstellt jetzt fünf animierte Cartoon-Szenen.")
+            raise RuntimeError("AGNES_API_KEY fehlt.")
+        log("Agnes startet fünf animierte Szenen.")
         generate_agnes_video(d,OUT,raw,clip_duration=5)
-        subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
-            "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
-            "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
-            "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
-            "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
-        return video
+        log("Agnes hat alle fünf Szenen fertiggestellt.")
+    except AgnesGenerationDisabled as exc:
+        raise RuntimeError("Agnes ist bewusst nicht freigegeben. Es wird kein anderer Anbieter automatisch gestartet: "+str(exc)) from exc
+    except Exception as agnes_exc:
+        log("Agnes ist fehlgeschlagen: "+str(agnes_exc)[:300])
+        log("Magic Hour wird als Ersatz versucht; Freigabe und Creditlimit werden geprüft.")
+        try:
+            generate_magic_hour_video(d,OUT,raw,clip_duration=5)
+            log("Magic Hour hat alle fünf Ersatzszenen fertiggestellt.")
+        except FreeCreditsUnavailable as mh_exc:
+            raise RuntimeError("Agnes ist fehlgeschlagen; Magic Hour wurde durch die Sicherheits-/Creditgrenze gestoppt: "+str(mh_exc)) from mh_exc
+        except Exception as mh_exc:
+            raise RuntimeError("Beide Videoanbieter sind fehlgeschlagen. Agnes: "+str(agnes_exc)[:220]+" | Magic Hour: "+str(mh_exc)[:220]) from mh_exc
+
+    # Gemeinsame Tonmischung für beide Videoanbieter.
+    subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
+        "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
+        "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
+        "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
+        "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
+    return video
     except AgnesGenerationDisabled as exc:
         raise RuntimeError("Es wurde nichts generiert oder hochgeladen, weil die Video-KI nicht freigegeben ist: "+str(exc)) from exc
     except Exception as exc:
