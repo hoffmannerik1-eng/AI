@@ -155,7 +155,7 @@ def local_story_fallback(state, comments):
 def generate(state,comments,trend_data=None):
     previous=state.get("history",[])[-35:]
     previous_stories=[{"episode":x.get("episode"),"title":x.get("title"),"topic":x.get("topic"),
-        "format":x.get("format"),"story":x.get("story",""),"script":x.get("script","")[:500]} for x in previous]
+        "format":x.get("format"),"story":x.get("story",""),"script":x.get("script","")[:500],"challenge":x.get("challenge")} for x in previous]
     learning=state.get("learning",{})
     prompt=f"""Du bist AI ERIK und produzierst AUSSCHLIESSLICH Shorts im Format Disziplin vs Motivation vs Ego vs Obsession.
 KEINE Gaming-Videos, keine Cartoon-Geschichten, keine Trend-Recherche, keine anderen Formate.
@@ -187,7 +187,7 @@ title beginnt mit "Folge {state.get('episode',0)+1}:". Keine Untertitel oder zus
     def check(obj):
         required=["title","description","script","scenes","story","visual_style","characters","hashtags"]
         if not isinstance(obj,dict) or any(k not in obj for k in required): raise ValueError("KI-Ausgabe unvollständig")
-        if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5: raise ValueError("Es müssen genau fünf Szenen sein")
+        if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=4: raise ValueError("Es müssen genau vier Tages-Etappen sein")
         if not 35<=len(str(obj["script"]).split())<=90: raise ValueError("Skriptlänge außerhalb des erlaubten Bereichs")
         obj.setdefault("topic","Kreative Unterhaltung"); obj.setdefault("format","Animation")
         obj.setdefault("trend_reason","Eigenständige Idee aus der Trendanalyse")
@@ -573,27 +573,8 @@ def create_local_discipline_video(raw,d,seconds=20):
 def make_video(d):
     raw=OUT/"video_ai_combined.mp4"; video=OUT/"story_episode.mp4"
     music=OUT/"ambient.wav"; effects=OUT/"sound_effects.wav"; audio=OUT/"voice.mp3"
-    agnes_key=os.getenv("AGNES_API_KEY","").strip()
-    try:
-        if not agnes_key: raise RuntimeError("AGNES_API_KEY fehlt.")
-        log("Agnes startet die Szenen mit individuellem Stil- und Schnittplan.")
-        generate_agnes_video(d,OUT,raw,clip_duration=5)
-        log("Agnes hat alle Szenen fertiggestellt.")
-    except AgnesGenerationDisabled as exc:
-        log("Agnes ist absichtlich deaktiviert: "+str(exc)[:180])
-        log("Kein kostenpflichtiger Ersatzanbieter wird ohne Freigabe gestartet.")
-        create_local_discipline_video(raw,d,20)
-    except Exception as agnes_exc:
-        log("Agnes ist fehlgeschlagen: "+str(agnes_exc)[:240])
-        try:
-            generate_magic_hour_video(d,OUT,raw,clip_duration=5)
-            log("Magic Hour hat alle Szenen fertiggestellt.")
-        except FreeCreditsUnavailable as mh_exc:
-            log("Magic Hour nicht verfügbar; lokaler Gratis-Fallback: "+str(mh_exc)[:200])
-            create_local_cartoon(raw,d,25)
-        except Exception as mh_exc:
-            log("Magic Hour fehlgeschlagen; lokaler Gratis-Fallback: "+str(mh_exc)[:200])
-            create_local_cartoon(raw,d,25)
+    log("Lokaler Stickman-Renderer wird verwendet; keine externe Video-KI wird gestartet.")
+    create_local_discipline_video(raw,d,20)
 
     probe=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of",
         "default=noprint_wrappers=1:nokey=1",str(raw)],capture_output=True,text=True,check=True)
@@ -704,13 +685,13 @@ def main():
         else: log("DRY_RUN aktiv: Video wurde nicht veröffentlicht.")
         state.update({"episode":data["episode"]})
         state.setdefault("history",[]).append({"episode":data["episode"],"title":data["title"],"topic":data.get("topic"),
-            "format":data.get("format"),"trend_reason":data.get("trend_reason"),"story":data.get("story",""),
+            "format":data.get("format"),"challenge":data.get("challenge"),"trend_reason":data.get("trend_reason"),"story":data.get("story",""),
             "script":data.get("script",""),"edit_plan":data.get("edit_plan",[]),"sound_plan":data.get("sound_plan",[]),
             "video_id":video_id,"upload_pending":upload_pending,"created_at":datetime.now(timezone.utc).isoformat()})
         state["history"]=state["history"][-100:]; update_learning(state,data)
         STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
         (OUT/"latest.json").write_text(json.dumps({"title":data["title"],"episode":data["episode"],"video_id":video_id,
-            "topic":data.get("topic"),"format":data.get("format"),"upload_pending":upload_pending,"story":data.get("story","")},ensure_ascii=False,indent=2),encoding="utf-8")
+            "topic":data.get("topic"),"format":data.get("format"),"challenge":data.get("challenge"),"upload_pending":upload_pending,"story":data.get("story","")},ensure_ascii=False,indent=2),encoding="utf-8")
         completed+=1; log(f"Folge {data['episode']} gespeichert. Lernprofil für nächste Folge aktualisiert.")
     log(f"Serienlauf beendet: {completed} Folge(n). Verlauf und Lernprofil gespeichert.")
 
