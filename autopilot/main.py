@@ -55,7 +55,7 @@ Trendthemen:
 Antworte ausschließlich als JSON mit:
 title (max 70 Zeichen), description (kurz, mit Hinweis auf KI-Visualisierung),
 script (deutscher Sprechertext, 75 bis 105 Wörter),
-scenes (genau 5 kurze Szenentexte, je max 8 Wörter),
+scenes (genau 5 kurze, bildhafte Szenen mit konkreter Handlung und sichtbarer Bewegung, je max 8 Wörter; eine Hauptfigur bleibt durchgehend dieselbe),
 hashtags (Array mit 3 bis 5 passenden Hashtags).
 """
     raw = ""
