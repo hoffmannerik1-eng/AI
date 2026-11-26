@@ -123,7 +123,10 @@ def local_story_fallback(state, comments):
         ("WANDERN","Wer geht Schritt für Schritt weiter?","Kilometer"),
         ("LIEGESTÜTZE","Wer bleibt sauber und konstant?","Wiederholungen")
     ]
-    activity,question,unit=challenges[(episode-1)%len(challenges)]
+    recent={str(x.get("challenge","")).upper() for x in state.get("history",[])[-2:]}
+    selected=next((item for offset in range(len(challenges))
+        if (item:=challenges[((episode-1+offset)%len(challenges))])[0] not in recent),challenges[(episode-1)%len(challenges)])
+    activity,question,unit=selected
     stages=[
         {"day":"DAY 1","scores":[6,32,16,6],"line":"Am Anfang will das Ego allen etwas beweisen."},
         {"day":"DAY 3","scores":[10,38,24,14],"line":"Die Motivation wird leiser. Das Ego will trotzdem gewinnen."},
@@ -174,7 +177,7 @@ Lernprofil:
 {json.dumps(learning,ensure_ascii=False)[:5000]}
 Zuschauerideen:
 {json.dumps(comments,ensure_ascii=False)}
-Erstelle Folge {state.get('episode',0)+1}. Skript auf Deutsch, 55-85 Wörter. Antworte NUR als JSON mit title, description, topic, format, trend_reason, challenge, challenge_question, unit, stages (genau 4 Objekte mit day und scores; scores immer vier Zahlen in Reihenfolge Motivation,Ego,Obsession,Discipline), script, story, visual_style, characters, scenes (genau 4), edit_plan (genau 5), sound_plan (genau 5), voice_required, hashtags (3-5).
+Erstelle Folge {state.get('episode',0)+1}. Skript auf Deutsch, 45-65 Wörter. Antworte NUR als JSON mit title, description, topic, format, trend_reason, challenge, challenge_question, unit, stages (genau 4 Objekte mit day und scores; scores immer vier Zahlen in Reihenfolge Motivation,Ego,Obsession,Discipline), script, story, visual_style, characters, scenes (genau 4), edit_plan (genau 5), sound_plan (genau 5), voice_required, hashtags (3-5).
 title beginnt mit "Folge {state.get('episode',0)+1}:". Keine Untertitel oder zusätzliche Texttafeln außer DAY, Challenge-Frage, vier Labels und Zähler."""
 
     def parse_json(raw):
@@ -189,7 +192,10 @@ title beginnt mit "Folge {state.get('episode',0)+1}:". Keine Untertitel oder zus
         if not isinstance(obj,dict) or any(k not in obj for k in required): raise ValueError("KI-Ausgabe unvollständig")
         if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=4: raise ValueError("Es müssen genau vier Tages-Etappen sein")
         if not 35<=len(str(obj["script"]).split())<=90: raise ValueError("Skriptlänge außerhalb des erlaubten Bereichs")
-        obj.setdefault("topic","Kreative Unterhaltung"); obj.setdefault("format","Animation")
+        obj.setdefault("topic","Disziplin, Motivation, Ego und Obsession"); obj.setdefault("format","Schwarzer Stickman-Vergleich")
+        recent_challenges={str(x.get("challenge","")).upper() for x in state.get("history",[])[-2:]}
+        if not str(obj.get("challenge","")).strip() or str(obj.get("challenge","")).upper() in recent_challenges:
+            raise ValueError("Challenge fehlt oder wurde in den letzten zwei Folgen bereits verwendet")
         obj.setdefault("trend_reason","Eigenständige Idee aus der Trendanalyse")
         obj.setdefault("edit_plan",["Dynamischer Einstieg"]+["Passender Schnitt und Perspektivwechsel"]*4)
         obj.setdefault("sound_plan",["Originaler Soundeffekt"]*5); obj.setdefault("voice_required",True)
@@ -574,7 +580,7 @@ def make_video(d):
     raw=OUT/"video_ai_combined.mp4"; video=OUT/"story_episode.mp4"
     music=OUT/"ambient.wav"; effects=OUT/"sound_effects.wav"; audio=OUT/"voice.mp3"
     log("Lokaler Stickman-Renderer wird verwendet; keine externe Video-KI wird gestartet.")
-    create_local_discipline_video(raw,d,20)
+    create_local_discipline_video(raw,d,30)
 
     probe=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of",
         "default=noprint_wrappers=1:nokey=1",str(raw)],capture_output=True,text=True,check=True)
