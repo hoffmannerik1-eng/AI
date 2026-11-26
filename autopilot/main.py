@@ -6,7 +6,6 @@ import edge_tts
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from video_provider import generate_video as generate_magic_hour_video, FreeCreditsUnavailable
 from agnes_video_provider import generate_video as generate_agnes_video, AgnesGenerationDisabled
 
 ROOT=Path(__file__).parent
@@ -198,24 +197,19 @@ def make_video(d):
         "-af",f"afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,seconds-2):.3f}:d=2",
         "-c:a","pcm_s16le",str(music)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
     agnes_key=os.getenv("AGNES_API_KEY","").strip()
-    magic_key=os.getenv("MAGIC_HOUR_API_KEY","").strip()
     raw=OUT/"video_ai_combined.mp4"
     try:
-        if agnes_key:
-            log("Agnes AI Video 2.5 Flash erstellt jetzt fünf animierte Cartoon-Szenen.")
-            generate_agnes_video(d,OUT,raw,clip_duration=5)
-        elif magic_key:
-            log("Kein Agnes-Schlüssel vorhanden; Magic Hour wird als Ersatz verwendet.")
-            generate_magic_hour_video(d,OUT,raw,clip_duration=5)
-        else:
+        if not agnes_key:
             raise RuntimeError("AGNES_API_KEY fehlt. Bitte als GitHub Secret eintragen.")
+        log("Agnes AI Video 2.5 Flash erstellt jetzt fünf animierte Cartoon-Szenen.")
+        generate_agnes_video(d,OUT,raw,clip_duration=5)
         subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
             "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
             "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
             "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
             "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
         return video
-    except (FreeCreditsUnavailable, AgnesGenerationDisabled) as exc:
+    except AgnesGenerationDisabled as exc:
         raise RuntimeError("Es wurde nichts generiert oder hochgeladen, weil die Video-KI nicht freigegeben ist: "+str(exc)) from exc
     except Exception as exc:
         raise RuntimeError("Der Cartoonfilm konnte nicht mit der Video-KI erstellt werden. Es wird absichtlich kein Ersatz-Textvideo hochgeladen: "+str(exc)) from exc
