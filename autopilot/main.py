@@ -189,116 +189,223 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 50-65 deutsche Wörte
 async def voice(txt,path): await edge_tts.Communicate(txt,"de-DE-ConradNeural").save(str(path))
 
 def create_local_cartoon(raw,d,seconds):
-    """Kostenloser Offline-Fallback: fünf animierte Roblox-inspirierte Szenen."""
-    from PIL import Image, ImageDraw
+    """Kostenloser Offline-Fallback: fünf reich illustrierte, animierte Story-Szenen."""
+    from PIL import Image, ImageDraw, ImageFilter
     import math, shutil
 
-    width,height,fps=540,960,12
-    frames_dir=OUT/"local_frames"
-    if frames_dir.exists():
-        shutil.rmtree(frames_dir)
-    frames_dir.mkdir(parents=True)
-    scenes=d.get("scenes") or [{} for _ in range(5)]
-    characters=d.get("characters") or []
-    if not characters:
-        characters=[{"name":"Figur","appearance":"dunkle Haare","clothing":"blaues Oberteil"}]
-    characters=characters[:2]
+    W,H,FPS=540,960,12
+    frame_dir=OUT/"local_frames"
+    if frame_dir.exists(): shutil.rmtree(frame_dir)
+    frame_dir.mkdir(parents=True)
+    scenes=d.get("scenes") or [""]*5
+    chars=d.get("characters") or [{"name":"Held","clothing":"blaues Outfit","appearance":"dunkle Haare"}]
+    chars=chars[:3]
+    outfits=[(48,125,235),(225,82,65),(55,170,115)]
+    skin=(238,190,148)
     palettes=[
-        ((90,165,220),(210,235,250),(65,125,75)),
-        ((255,170,95),(255,220,160),(105,125,75)),
-        ((85,95,155),(175,185,225),(55,60,100)),
-        ((65,165,170),(175,225,220),(35,105,115)),
-        ((145,115,190),(220,190,230),(75,65,105))
+        ((45,90,145),(235,170,90),(60,105,70)),
+        ((55,135,175),(240,205,125),(45,125,145)),
+        ((48,48,105),(145,115,205),(55,55,105)),
+        ((155,100,70),(245,190,105),(100,80,60)),
+        ((60,125,100),(180,220,165),(50,105,65))
     ]
-    outfit_colors=[(45,115,220),(225,85,65),(70,165,110),(170,95,210)]
-    skin=(235,190,150)
 
-    def draw_avatar(draw,cx,base,idx,phase,scale=1.0):
-        spec=characters[idx % len(characters)]
-        clothing=str(spec.get("clothing","")).lower()
-        color=outfit_colors[(sum(ord(c) for c in clothing)+idx*3)%len(outfit_colors)]
-        sway=math.sin(phase*2.0+idx)*14*scale
-        step=math.sin(phase*3.0+idx)*20*scale
-        def rect(box,fill):
-            draw.rectangle(tuple(int(v) for v in box),fill=fill)
-        head_w,head_h=68*scale,72*scale
-        head_x=cx-head_w/2
-        head_y=base-300*scale
-        # legs
-        rect((cx-28*scale,base-125*scale,cx-5*scale+step,base), (35,45,70))
-        rect((cx+5*scale-step,base-125*scale,cx+28*scale,base), (35,45,70))
-        # torso and arms
-        rect((cx-48*scale,base-245*scale,cx+48*scale,base-125*scale),color)
-        rect((cx-78*scale+sway,base-238*scale,cx-50*scale+sway,base-135*scale),(color[0]//2,color[1]//2,color[2]//2))
-        rect((cx+50*scale-sway,base-238*scale,cx+78*scale-sway,base-135*scale),(color[0]//2,color[1]//2,color[2]//2))
-        draw.rectangle((cx-78*scale+sway,base-145*scale,cx-50*scale+sway,base-115*scale),fill=skin)
-        draw.rectangle((cx+50*scale-sway,base-145*scale,cx+78*scale-sway,base-115*scale),fill=skin)
-        # square head, hair and simple face
-        rect((head_x,head_y,head_x+head_w,head_y+head_h),skin)
-        hair=(55,42,35)
-        rect((head_x,head_y,head_x+head_w,head_y+18*scale),hair)
-        draw.rectangle((head_x,head_y+8*scale,head_x+13*scale,head_y+32*scale),fill=hair)
-        draw.rectangle((head_x+head_w-13*scale,head_y+8*scale,head_x+head_w,head_y+32*scale),fill=hair)
-        eye_y=head_y+39*scale
-        draw.ellipse((cx-17*scale,eye_y,cx-9*scale,eye_y+8*scale),fill=(25,25,30))
-        draw.ellipse((cx+9*scale,eye_y,cx+17*scale,eye_y+8*scale),fill=(25,25,30))
-        draw.line((cx-8*scale,head_y+57*scale,cx+8*scale,head_y+57*scale),fill=(120,55,55),width=max(1,int(3*scale)))
+    def rounded(draw,box,fill,r=12,outline=None,width=2):
+        draw.rounded_rectangle(tuple(int(v) for v in box),radius=int(r),fill=fill,outline=outline,width=width)
+    def gradient(top,bottom):
+        im=Image.new("RGB",(W,H))
+        pix=im.load()
+        for y in range(H):
+            t=y/(H-1)
+            c=tuple(int(top[k]*(1-t)+bottom[k]*t) for k in range(3))
+            for x in range(W): pix[x,y]=c
+        return im
+    def avatar(draw,x,ground,idx,t,scene_i,action):
+        spec=chars[idx]
+        shirt=outfits[(sum(map(ord,str(spec.get("clothing",""))))+idx)%len(outfits)]
+        scale=0.92 if len(chars)>1 else 1.05
+        x=float(x)+math.sin(t*2.4+idx)*10
+        stride=math.sin(t*5+idx)*22
+        jump=max(0,math.sin(t*3+scene_i)*12)
+        y=ground-jump
+        # Boden-Schatten
+        draw.ellipse((x-54,y+3,x+54,y+20),fill=(20,35,45))
+        # Beine mit sichtbarer Laufbewegung
+        rounded(draw,(x-27+stride,y-132,x-5+stride,y-42),(35,43,62),5)
+        rounded(draw,(x+5-stride,y-132,x+27-stride,y-42),(35,43,62),5)
+        rounded(draw,(x-34+stride,y-52,x-1+stride,y-35),(25,30,42),5)
+        rounded(draw,(x+1-stride,y-52,x+34-stride,y-35),(25,30,42),5)
+        # Torso und Arme; Armhaltung reagiert auf die Szene
+        rounded(draw,(x-48,y-255,x+48,y-128),shirt,10,tuple(max(0,c-35) for c in shirt),3)
+        arm_swing=math.sin(t*4+idx)*18
+        if action in ("reach","point","open"):
+            left_end=(x-93,y-185+arm_swing); right_end=(x+70,y-245)
+        elif action in ("run","escape","chase"):
+            left_end=(x-85,y-220+arm_swing); right_end=(x+85,y-155-arm_swing)
+        elif action in ("surprise","discover"):
+            left_end=(x-72,y-285); right_end=(x+72,y-285)
+        else:
+            left_end=(x-72,y-180+arm_swing); right_end=(x+72,y-180-arm_swing)
+        for side,end in ((-1,left_end),(1,right_end)):
+            sx=x+side*43; sy=y-235
+            draw.line((sx,sy,end[0],end[1]),fill=tuple(max(0,c-30) for c in shirt),width=25)
+            draw.ellipse((end[0]-12,end[1]-12,end[0]+12,end[1]+12),fill=skin)
+        # Kopf, Haare und ausdrucksstarkes Gesicht
+        rounded(draw,(x-37,y-344,x+37,y-265),skin,9,(120,85,65),2)
+        hair=(55,38,32)
+        rounded(draw,(x-39,y-350,x+39,y-318),hair,8)
+        draw.rectangle((x-38,y-335,x-25,y-304),fill=hair)
+        draw.rectangle((x+25,y-335,x+38,y-304),fill=hair)
+        eye_y=y-310
+        draw.ellipse((x-20,eye_y,x-11,eye_y+10),fill=(25,30,38))
+        draw.ellipse((x+11,eye_y,x+20,eye_y+10),fill=(25,30,38))
+        if action in ("surprise","discover"):
+            draw.ellipse((x-7,y-292,x+7,y-277),outline=(110,45,45),width=3)
+        else:
+            draw.arc((x-10,y-294,x+10,y-280),5,175,fill=(115,45,45),width=3)
+
+    def scene_background(draw,scene,idx,t,sky,glow,ground):
+        s=scene.lower()
+        # Hügel, entfernte Ebenen und atmosphärisches Licht
+        draw.ellipse((365,75,485,195),fill=glow)
+        for layer in range(3):
+            y=520+layer*65
+            color=tuple(max(0,min(255,c-layer*13)) for c in ground)
+            points=[(0,H),(0,y)]
+            for x in range(-20,W+40,80):
+                points.append((x,y-35-math.sin(x*.018+layer)*28))
+            points.extend([(W,H)])
+            draw.polygon(points,fill=color)
+        if any(k in s for k in ("space","weltall","planet","mond","rakete","raumschiff")):
+            for x,y in ((45,130),(170,245),(420,300),(490,460),(100,390),(300,115)):
+                draw.ellipse((x,y,x+5,y+5),fill=(255,255,255))
+            draw.ellipse((355,270,505,420),fill=(135,105,195))
+            draw.ellipse((380,290,475,395),fill=(95,90,160))
+            draw.ellipse((390,320,415,345),fill=(165,145,215))
+        elif any(k in s for k in ("meer","ocean","wasser","strand","boot","insel","unterwasser")):
+            draw.rectangle((0,500,W,790),fill=(35,115,165))
+            for y in (545,610,680,735):
+                for x in range(-30,W,110):
+                    yy=y+int(math.sin(t*3+x)*7)
+                    draw.arc((x,yy,x+100,yy+35),0,180,fill=(160,225,240),width=5)
+            if "boot" in s or "schiff" in s:
+                draw.polygon(((160,505),(385,505),(340,570),(210,570)),fill=(115,65,45))
+                draw.polygon(((260,360),(260,495),(350,495)),fill=(245,235,205))
+                draw.line((260,350,260,510),fill=(75,55,45),width=8)
+        elif any(k in s for k in ("wald","forest","baum","dschungel","park")):
+            for x in (15,105,420,500):
+                draw.rectangle((x+20,385,x+48,735),fill=(105,65,40))
+                draw.ellipse((x-35,300,x+105,470),fill=(35,115,62))
+                draw.ellipse((x-10,270,x+85,420),fill=(50,145,72))
+        elif any(k in s for k in ("höhle","cave","berg","mine","tunnel")):
+            draw.polygon(((0,0),(110,0),(180,210),(145,450),(0,570)),fill=(65,62,75))
+            draw.polygon(((W,0),(430,0),(365,220),(410,460),(W,560)),fill=(55,52,68))
+            for x,y in ((85,590),(455,620),(160,730)):
+                draw.polygon(((x,y),(x+18,y-55),(x+36,y)),fill=(110,105,125))
+        elif any(k in s for k in ("schule","labor","computer","büro","zimmer","haus","stadt","straße","gebäude")):
+            for x,w,h,col in ((25,120,270,(115,130,155)),(390,125,340,(145,125,115))):
+                rounded(draw,(x,500-h,x+w,750),8,col)
+                for wx in range(x+18,x+w-12,42):
+                    for wy in range(520-h,700,62):
+                        rounded(draw,(wx,wy,wx+22,wy+30),(100,175,220),4)
+            draw.rectangle((0,748,W,790),fill=(80,85,95))
+        else:
+            # Fantasie-Landschaft: Felsen, Gras, kleine Büsche
+            for x in (30,460):
+                draw.ellipse((x-55,620,x+65,760),fill=(70,100,75))
+                draw.ellipse((x-30,590,x+45,700),fill=(85,130,80))
+
+    def draw_story_object(draw,scene,t,idx):
+        s=scene.lower()
+        x=270+int(math.sin(t*2.2)*55)
+        y=635+int(math.sin(t*3)*10)
+        # Das zentrale Objekt wird aus der konkreten Szenenbeschreibung abgeleitet.
+        if any(k in s for k in ("schatz","truhe","kiste","gold","geheimnis","fund")):
+            rounded(draw,(x-48,y-55,x+48,y+12),(120,70,35),9,(245,185,65),4)
+            draw.rectangle((x-48,y-35,x+48,y-20),fill=(225,165,45))
+            rounded(draw,(x-10,y-58,x+10,y-43),(255,220,90),5)
+            for a in range(3):
+                sx=x-65+a*60
+                draw.line((sx,y-95,sx+math.sin(t*4+a)*8,y-125),fill=(255,230,110),width=4)
+        elif any(k in s for k in ("schlüssel","key","tür","portal","tor","öffnen")):
+            rounded(draw,(x-43,y-105,x+43,y+20),(95,55,45),9,(225,175,100),4)
+            draw.ellipse((x-14,y-62,x+14,y-34),outline=(255,215,80),width=7)
+            draw.line((x,y-34,x,y-5),fill=(255,215,80),width=7)
+        elif any(k in s for k in ("computer","roboter","maschine","gerät","konsole","hacker")):
+            rounded(draw,(x-62,y-75,x+62,y+5),(45,55,70),10,(125,210,235),4)
+            rounded(draw,(x-47,y-60,x+47,y-22),(45,155,175),5)
+            draw.line((x,y+5,x,y+25),fill=(70,75,85),width=8)
+            draw.line((x-35,y+25,x+35,y+25),fill=(70,75,85),width=8)
+        elif any(k in s for k in ("rakete","raumschiff","flugzeug","fliegen")):
+            draw.polygon(((x,y-100),(x+38,y+20),(x,y+5),(x-38,y+20)),fill=(205,215,225),outline=(70,85,110))
+            draw.ellipse((x-12,y-45,x+12,y-20),fill=(80,190,230))
+            draw.polygon(((x-13,y+8),(x,y+65),(x+13,y+8)),fill=(255,135,45))
+        elif any(k in s for k in ("ball","spiel","rennen","wettkampf")):
+            draw.ellipse((x-35,y-35,x+35,y+35),fill=(245,95,65),outline=(255,235,190),width=5)
+            draw.arc((x-25,y-25,x+25,y+25),0,300,fill=(255,255,255),width=4)
+        elif any(k in s for k in ("buch","karte","brief","nachricht","plan")):
+            rounded(draw,(x-48,y-60,x+48,y+30),(235,220,175),5,(110,75,45),4)
+            for yy in (y-35,y-15,y+5):
+                draw.line((x-30,yy,x+30,yy),fill=(120,95,70),width=3)
+        elif any(k in s for k in ("auto","wagen","fahrzeug","motorrad","fahrrad")):
+            rounded(draw,(x-70,y-48,x+70,y+4),(205,65,55),15,(80,45,45),3)
+            rounded(draw,(x-35,y-78,x+38,y-38),(100,185,220),10)
+            for wx in (x-45,x+45):
+                draw.ellipse((wx-15,y-8,wx+15,y+22),fill=(30,35,45),outline=(210,210,210),width=3)
+        else:
+            # Leuchtender Story-Gegenstand, sichtbar und animiert
+            draw.ellipse((x-35,y-35,x+35,y+35),fill=(255,205,55),outline=(255,245,180),width=5)
+            draw.ellipse((x-12,y-12,x+12,y+12),fill=(255,250,220))
+            for a in range(8):
+                ang=a*math.pi/4+t
+                ex=x+math.cos(ang)*52; ey=y+math.sin(ang)*52
+                draw.line((x+math.cos(ang)*40,y+math.sin(ang)*40,ex,ey),fill=(255,235,130),width=3)
 
     frame_no=0
-    for scene_index in range(5):
-        scene_text=str(scenes[scene_index] if scene_index < len(scenes) else "").lower()
-        sky,glow,ground=palettes[scene_index]
-        if any(w in scene_text for w in ("wald","forest","baum","dschungel")):
-            sky,glow,ground=(90,155,190),(190,220,150),(65,115,55)
-        elif any(w in scene_text for w in ("meer","ocean","wasser","strand","boot")):
-            sky,glow,ground=(75,155,205),(190,225,235),(35,125,165)
-        elif any(w in scene_text for w in ("weltall","space","planet","mond","stern")):
-            sky,glow,ground=(18,22,60),(95,85,150),(40,42,85)
-        elif any(w in scene_text for w in ("schule","stadt","haus","straße","labor")):
-            sky,glow,ground=(125,175,220),(220,230,235),(100,110,125)
-        count=max(1,round((seconds/5)*fps))
-        for local_frame in range(count):
-            phase=local_frame/max(1,count-1)*math.pi*2
-            img=Image.new("RGB",(width,height),sky)
+    per_scene=max(1,round((seconds/5)*FPS))
+    for si in range(5):
+        desc=str(scenes[si] if si<len(scenes) else "")
+        lower=desc.lower()
+        sky,glow,ground=palettes[si]
+        if any(k in lower for k in ("space","weltall","planet","mond","stern")):
+            sky,glow,ground=(12,18,55),(115,100,190),(40,42,85)
+        elif any(k in lower for k in ("meer","ocean","wasser","strand","boot")):
+            sky,glow,ground=(65,145,195),(235,220,150),(35,115,150)
+        elif any(k in lower for k in ("wald","forest","baum","dschungel")):
+            sky,glow,ground=(75,145,175),(235,215,130),(45,105,55)
+        elif any(k in lower for k in ("höhle","cave","mine","tunnel")):
+            sky,glow,ground=(35,35,55),(220,145,65),(65,60,70)
+        for fi in range(per_scene):
+            t=fi/max(1,per_scene-1)*math.pi*2
+            img=gradient(sky,tuple(max(0,int(c*.48)) for c in sky))
             draw=ImageDraw.Draw(img)
-            # Lichtschein und einfache, zur Szene passende Umgebung
-            draw.ellipse((330,90,455,215),fill=glow)
-            for cloud_x in (45,245,445):
-                offset=int(math.sin(phase+cloud_x)*12)
-                draw.ellipse((cloud_x-45+offset,190,cloud_x+45+offset,225),fill=(235,240,245))
-                draw.ellipse((cloud_x-20+offset,170,cloud_x+25+offset,225),fill=(235,240,245))
-            if "weltall" in scene_text or "space" in scene_text or "planet" in scene_text:
-                for sx,sy in ((55,110),(160,280),(420,330),(480,500),(100,450)):
-                    draw.ellipse((sx,sy,sx+5,sy+5),fill=(255,255,255))
-                draw.ellipse((355,270,490,405),fill=(145,115,190))
-                draw.ellipse((375,290,470,390),fill=(100,90,160))
-            elif any(w in scene_text for w in ("wald","forest","baum","dschungel")):
-                for tx in (35,470):
-                    draw.rectangle((tx+20,480,tx+45,720),fill=(105,70,45))
-                    draw.ellipse((tx-35,380,tx+100,535),fill=(45,125,65))
-            elif any(w in scene_text for w in ("meer","ocean","wasser","strand","boot")):
-                for wy in (560,610,660):
-                    draw.arc((0,wy,600,wy+70),0,180,fill=(190,235,245),width=7)
-            else:
-                draw.rectangle((55,430,160,680),fill=(175,185,195))
-                draw.rectangle((75,455,105,505),fill=(100,165,220))
-                draw.rectangle((115,455,145,505),fill=(100,165,220))
-                draw.rectangle((365,390,475,680),fill=(195,180,155))
-                draw.polygon(((350,395),(420,315),(490,395)),fill=(125,65,65))
-            draw.rectangle((0,700,width,height),fill=ground)
-            # Figuren bleiben über alle Szenen hinweg gleich und bewegen sich sichtbar.
-            for ci in range(len(characters)):
-                cx=width*(0.42 if ci==0 else 0.70)+math.sin(phase+ci)*24
-                draw_avatar(draw,cx,785,ci,phase+scene_index*0.8,1.0)
-            # Ein animiertes Objekt pro Szene als sichtbarer Handlungspunkt.
-            obj_x=int(width*0.5+math.sin(phase*1.4)*90)
-            draw.ellipse((obj_x-24,625,obj_x+24,673),fill=(255,215,65),outline=(255,245,180),width=4)
-            img.save(frames_dir/f"frame_{frame_no:05d}.png",quality=90)
+            scene_background(draw,desc,si,t,sky,glow,ground)
+            # Vordergrund, Lichtpunkte und filmische Partikel
+            for p in range(18):
+                px=(p*97+int(t*18))%W
+                py=(p*137+si*53)%720
+                draw.ellipse((px,py,px+3,py+3),fill=(255,240,190))
+            action="reach"
+            if any(k in lower for k in ("rennen","flucht","verfolgt","flieht","entkommen","jagt")): action="run"
+            elif any(k in lower for k in ("entdeckt","findet","plötzlich","überrasch","geheim")): action="discover"
+            elif any(k in lower for k in ("öffnet","öffnet sich","drückt","aktiviert","greift","nimmt")): action="open"
+            elif any(k in lower for k in ("zeigt","ruft","warnt","signal")): action="point"
+            for ci in range(len(chars)):
+                cx=W*(0.34 if ci==0 else (0.68 if ci==1 else 0.52))
+                if action=="run": cx+=math.sin(t*2+ci)*55
+                avatar(draw,cx,820,ci,t,si,action)
+            draw_story_object(draw,desc,t,si)
+            # Szenenwechsel als kurze filmische Lichtblende, ohne eingeblendeten Text.
+            if fi<2:
+                overlay=Image.new("RGBA",(W,H),(255,255,255,int((2-fi)*22)))
+                img=Image.alpha_composite(img.convert("RGBA"),overlay).convert("RGB")
+            img.save(frame_dir/f"frame_{frame_no:05d}.jpg",quality=91,optimize=True)
             frame_no+=1
-    subprocess.run(["ffmpeg","-y","-loglevel","error","-framerate",str(fps),
-        "-i",str(frames_dir/"frame_%05d.png"),"-c:v","libx264","-preset","ultrafast",
-        "-crf","24","-pix_fmt","yuv420p","-r","24",str(raw)],check=True)
-    log("Lokaler Gratis-Fallback hat fünf animierte Szenen erstellt.")
+
+    subprocess.run(["ffmpeg","-y","-loglevel","error","-framerate",str(FPS),
+        "-i",str(frame_dir/"frame_%05d.jpg"),"-c:v","libx264","-preset","ultrafast",
+        "-crf","22","-pix_fmt","yuv420p","-r","24",str(raw)],check=True)
+    log("Lokaler Gratis-Fallback: fünf individuell illustrierte und animierte Story-Szenen gerendert.")
 
 def make_video(d):
     audio=OUT/"voice.mp3"; asyncio.run(voice(d["script"],audio))
