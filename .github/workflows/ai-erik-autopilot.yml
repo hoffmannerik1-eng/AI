@@ -3,11 +3,11 @@ name: AI ERIK Autopilot
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Nur Video erstellen, nicht zu YouTube hochladen"
+      upload_public:
+        description: "Video nach der Erstellung öffentlich auf YouTube hochladen"
         required: true
         type: boolean
-        default: true
+        default: false
   schedule:
     - cron: "0 16 * * *"
 
@@ -42,7 +42,7 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PRIVACY_STATUS: public
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          DRY_RUN: ${{ github.event_name == 'schedule' || !inputs.upload_public }}
           MAX_DAILY_VIDEOS: "1"
         run: python autopilot/main.py
       - name: Save video if upload setup is incomplete or for review
