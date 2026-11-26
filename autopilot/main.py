@@ -466,49 +466,73 @@ def create_local_cartoon(raw,d,seconds):
     log("Lokaler Gratis-Fallback: fünf individuell illustrierte und animierte Story-Szenen gerendert.")
 
 def make_video(d):
-    audio=OUT/"voice.mp3"; asyncio.run(voice(d["script"],audio))
-    p=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",str(audio)],capture_output=True,text=True,check=True)
-    seconds=max(1,float(p.stdout.strip()))
-    video=OUT/"story_episode.mp4"
-    music=OUT/"ambient.wav"
-    subprocess.run(["ffmpeg","-y","-f","lavfi","-i",
-        f"aevalsrc=0.020*sin(2*PI*110*t)+0.014*sin(2*PI*164.81*t)+0.010*sin(2*PI*220*t):s=44100:d={seconds:.3f}",
-        "-af",f"afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,seconds-2):.3f}:d=2",
-        "-c:a","pcm_s16le",str(music)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
+    raw=OUT/"video_ai_combined.mp4"; video=OUT/"story_episode.mp4"
+    music=OUT/"ambient.wav"; effects=OUT/"sound_effects.wav"; audio=OUT/"voice.mp3"
     agnes_key=os.getenv("AGNES_API_KEY","").strip()
-    raw=OUT/"video_ai_combined.mp4"
-
-    # Agnes ist der Hauptanbieter. Magic Hour wird nur bei einem echten
-    # Agnes-Fehler versucht und prüft selbst Freigabe sowie Episoden-Creditlimit.
     try:
-        if not agnes_key:
-            raise RuntimeError("AGNES_API_KEY fehlt.")
-        log("Agnes startet fünf animierte Szenen.")
+        if not agnes_key: raise RuntimeError("AGNES_API_KEY fehlt.")
+        log("Agnes startet die Szenen mit individuellem Stil- und Schnittplan.")
         generate_agnes_video(d,OUT,raw,clip_duration=5)
-        log("Agnes hat alle fünf Szenen fertiggestellt.")
+        log("Agnes hat alle Szenen fertiggestellt.")
     except AgnesGenerationDisabled as exc:
-        log("Agnes ist absichtlich deaktiviert: "+str(exc)[:220])
-        log("Es wird kein kostenpflichtiger Ersatzanbieter gestartet; lokaler Gratis-Fallback folgt.")
-        create_local_cartoon(raw,d,seconds)
+        log("Agnes ist absichtlich deaktiviert: "+str(exc)[:180])
+        log("Kein kostenpflichtiger Ersatzanbieter wird ohne Freigabe gestartet.")
+        create_local_cartoon(raw,d,25)
     except Exception as agnes_exc:
-        log("Agnes ist fehlgeschlagen: "+str(agnes_exc)[:300])
-        log("Magic Hour wird als Ersatz versucht; Freigabe und Creditlimit werden geprüft.")
+        log("Agnes ist fehlgeschlagen: "+str(agnes_exc)[:240])
         try:
             generate_magic_hour_video(d,OUT,raw,clip_duration=5)
-            log("Magic Hour hat alle fünf Ersatzszenen fertiggestellt.")
+            log("Magic Hour hat alle Szenen fertiggestellt.")
         except FreeCreditsUnavailable as mh_exc:
-            log("Magic Hour nicht verfügbar (z.B. zu wenig Credits): "+str(mh_exc)[:260])
-            log("Keine weiteren Credits werden angefordert; lokaler Gratis-Fallback folgt.")
-            create_local_cartoon(raw,d,seconds)
+            log("Magic Hour nicht verfügbar; lokaler Gratis-Fallback: "+str(mh_exc)[:200])
+            create_local_cartoon(raw,d,25)
         except Exception as mh_exc:
-            log("Magic Hour fehlgeschlagen: "+str(mh_exc)[:260])
-            log("Lokaler Gratis-Fallback folgt.")
-            create_local_cartoon(raw,d,seconds)
+            log("Magic Hour fehlgeschlagen; lokaler Gratis-Fallback: "+str(mh_exc)[:200])
+            create_local_cartoon(raw,d,25)
 
-    # Gemeinsame Tonmischung für beide Videoanbieter.
-    subprocess.run(["ffmpeg","-y","-i",str(raw),"-i",str(audio),"-i",str(music),
-        "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
-        "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
+    probe=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of",
+        "default=noprint_wrappers=1:nokey=1",str(raw)],capture_output=True,text=True,check=True)
+    seconds=max(5.0,float(probe.stdout.strip()))
+    voice_required=bool(d.get("voice_required",True))
+    if voice_required:
+        asyncio.run(voice(d["script"],audio))
+        voice_probe=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of",
+            "default=noprint_wrappers=1:nokey=1",str(audio)],capture_output=True,text=True,check=True)
+        seconds=max(seconds,float(voice_probe.stdout.strip()))
+        log("Erzählerstimme wird verwendet.")
+    else:
+        log("Produktionsplan: keine Erzählerstimme nötig.")
+
+    subprocess.run(["ffmpeg","-y","-f","lavfi","-i",
+        f"aevalsrc=0.018*sin(2*PI*110*t)+0.012*sin(2*PI*164.81*t)+0.008*sin(2*PI*220*t):s=44100:d={seconds:.3f}",
+        "-af",f"afade=t=in:st=0:d=1.0,afade=t=out:st={max(0,seconds-1.5):.3f}:d=1.5",
+        "-c:a","pcm_s16le",str(music)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
+
+    # Original erzeugte Soundakzente an Szenenwechseln; keine ungeklärten Fremd-Audios.
+    sound_plan=d.get("sound_plan") or []
+    expression="0"
+    for i in range(1,5):
+        moment=min(seconds-0.4,seconds*i/5)
+        hint=str(sound_plan[i] if len(sound_plan)>i else "whoosh").lower()
+        if any(word in hint for word in ("impact","boom","knall","stoß","hit")):
+            freq=95+i*12
+        elif any(word in hint for word in ("chime","glöck","magic","spark","glitzer")):
+            freq=720+i*80
+        else:
+            freq=260+i*35
+        expression+=f"+(0.035*sin(2*PI*({freq}+120*(t-{moment:.3f}))*t)*exp(-13*(t-{moment:.3f}))*gte(t,{moment:.3f})*lt(t,{moment+0.38:.3f}))"
+    subprocess.run(["ffmpeg","-y","-f","lavfi","-i",f"aevalsrc={expression}:s=44100:d={seconds:.3f}",
+        "-c:a","pcm_s16le",str(effects)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
+
+    inputs=["-i",str(raw),"-i",str(music),"-i",str(effects)]
+    graph=["[1:a]volume=0.24[music]","[2:a]volume=0.70[sfx]"]
+    if voice_required:
+        inputs += ["-i",str(audio)]
+        graph += ["[3:a]volume=1.0[voice]","[voice][music][sfx]amix=inputs=3:duration=first:dropout_transition=2[a]"]
+    else:
+        graph += ["[music][sfx]amix=inputs=2:duration=first:dropout_transition=2[a]"]
+    graph.append(f"[0:v]scale=1080:1920:flags=lanczos,eq=contrast=1.04:saturation=1.10,unsharp=5:5:0.35:3:3:0.0,fade=t=in:st=0:d=0.18,format=yuv420p[v]")
+    subprocess.run(["ffmpeg","-y"]+inputs+["-filter_complex",";".join(graph),"-map","[v]","-map","[a]",
         "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
         "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
     return video
