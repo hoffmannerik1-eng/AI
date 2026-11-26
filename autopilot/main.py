@@ -110,7 +110,6 @@ def research_shorts_trends(state=None):
     log(f"Trend-Analyse abgeschlossen: {result['duration_minutes']} Minuten, {len(observations)} Titel.")
     return result
 
-def local_story_fallback
 def local_story_fallback(state, comments):
     """Erstellt ohne externe Text-KI eine vollständige, sichere Story mit fünf Bildszenen."""
     episode=int(state.get("episode",0))+1
