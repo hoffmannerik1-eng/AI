@@ -10,7 +10,7 @@ from video_provider import generate_video as generate_magic_hour_video, FreeCred
 
 ROOT=Path(__file__).parent
 OUT=ROOT/"output"; OUT.mkdir(exist_ok=True)
-STATE=ROOT/"city_state.json"
+STATE=ROOT/"story_state.json"
 GEMINI=os.getenv("GEMINI_API_KEY","")
 ROUTER=os.getenv("OPENROUTER_API_KEY","")
 MODEL=os.getenv("GEMINI_MODEL","gemini-3.8-flash")
@@ -185,52 +185,6 @@ Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 50-65 deutsche Wörte
         raise RuntimeError("Alle aktuell gelisteten kostenlosen KI-Modelle fehlgeschlagen: "+" | ".join(failures[-4:]))
     raise RuntimeError("Keine KI verfügbar. GEMINI_API_KEY oder OPENROUTER_API_KEY in GitHub Secrets prüfen.")
 
-def font(n,b=False):
-    p="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if b else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    return ImageFont.truetype(p,n) if Path(p).exists() else ImageFont.load_default()
-
-def render(d,duration,fps=24):
-    # Story-Video ohne Stadtkarte, Gebäude oder Einwohneranzeige.
-    w,h=720,1280; total=max(1,math.ceil(duration*fps)); folder=OUT/"frames"; folder.mkdir(exist_ok=True)
-    for p in folder.glob("frame_*.png"): p.unlink()
-    scenes=d.get("scenes",["Eine neue Geschichte beginnt"]*5); title=str(d.get("title","Eine neue Geschichte")); hook=str(d.get("script",""))[:85]
-    def wrap(value,limit):
-        words=str(value).split(); lines=[]; line=""
-        for word in words:
-            if len(line)+len(word)+1>limit:
-                if line: lines.append(line)
-                line=word
-            else: line=(line+" "+word).strip()
-        if line: lines.append(line)
-        return lines
-    for n in range(total):
-        t=n/fps; progress=n/max(1,total-1); si=min(4,int(progress*5))
-        im=Image.new("RGB",(w,h),(7,13,28)); q=ImageDraw.Draw(im)
-        for yy in range(h):
-            k=yy/h; q.line((0,yy,w,yy),fill=(int(7+8*k),int(14+10*k),int(29+20*k)))
-        for j in range(70):
-            x=(j*97+int(t*(5+j%4)))%w; y=(j*61)%h; rr=1+(j%3)
-            q.ellipse((x-rr,y-rr,x+rr,y+rr),fill=(35,75+(j%5)*12,105+(j%4)*18))
-        shift=int(24*math.sin(t*.7)); q.ellipse((420+shift,170,760+shift,510),fill=(13,35,59)); q.ellipse((-180-shift,650,220-shift,1080),fill=(12,29,50))
-        q.rounded_rectangle((28,28,692,145),radius=24,fill=(8,22,40),outline=(65,210,165),width=2)
-        q.text((52,48),"AI ERIK  /  STORY",font=font(23,True),fill=(80,255,175))
-        for idx,line in enumerate(wrap(title,42)[:2]): q.text((52,88+idx*29),line,font=font(19,True),fill=(245,250,255))
-        q.rounded_rectangle((30,300,690,940),radius=30,fill=(9,24,43),outline=(58,135,155),width=3)
-        q.text((60,340),f"KAPITEL  {si+1}/5",font=font(20,True),fill=(80,255,175)); q.line((60,390,660,390),fill=(55,105,125),width=2)
-        yy=450
-        for line in wrap(scenes[si],31)[:8]:
-            q.text((60,yy),line,font=font(29,True),fill=(248,250,255)); yy+=55
-        q.rounded_rectangle((30,1190,690,1204),radius=7,fill=(27,49,67)); q.rounded_rectangle((30,1190,30+int(660*progress),1204),radius=7,fill=(65,245,165))
-        if t<2.5:
-            q.rounded_rectangle((30,175,690,270),radius=20,fill=(8,28,46),outline=(70,235,175),width=2)
-            q.text((55,193),"WAS PASSIERT ALS NÄCHSTES?",font=font(19,True),fill=(80,255,175))
-            for idx,line in enumerate(wrap(hook,43)[:2]): q.text((55,225+idx*27),line,font=font(17,True),fill=(255,255,255))
-        if t>max(0,duration-2.5):
-            q.rounded_rectangle((55,1000,665,1080),radius=18,fill=(8,32,45),outline=(75,225,170),width=2)
-            q.text((82,1022),"Welche Geschichte soll als Nächstes kommen?",font=font(18,True),fill=(235,250,245))
-        im.save(folder/f"frame_{n:05d}.png",optimize=True)
-    return folder
-
 async def voice(txt,path): await edge_tts.Communicate(txt,"de-DE-ConradNeural").save(str(path))
 def make_video(d):
     audio=OUT/"voice.mp3"; asyncio.run(voice(d["script"],audio))
@@ -259,13 +213,6 @@ def make_video(d):
         raise RuntimeError("Es wurde kein Cartoon hochgeladen, weil die KI-Videoerstellung nicht freigegeben oder das Credit-Limit zu niedrig ist: "+str(exc)) from exc
     except Exception as exc:
         raise RuntimeError("Der Cartoonfilm konnte nicht mit der Video-KI erstellt werden. Es wird absichtlich kein Ersatz-Textvideo hochgeladen: "+str(exc)) from exc
-    frames=render(d,seconds)
-    subprocess.run(["ffmpeg","-y","-framerate","24","-i",str(frames/"frame_%05d.png"),"-i",str(audio),"-i",str(music),
-        "-filter_complex","[1:a]volume=1.0[voice];[2:a]volume=0.22[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
-        "-map","0:v:0","-map","[a]","-vf","scale=1080:1920:flags=lanczos,format=yuv420p",
-        "-c:v","libx264","-preset","medium","-crf","21","-r","24","-c:a","aac","-b:a","192k",
-        "-shortest","-movflags","+faststart",str(video)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
-    return video
 
 def verify_video(video):
     """Prüft das fertige MP4, bevor es an YouTube übergeben wird."""
