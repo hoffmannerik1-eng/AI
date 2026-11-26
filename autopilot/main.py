@@ -73,12 +73,32 @@ def get_comments(state):
         return []
 
 def generate(state,comments):
-    prompt=f"""Du bist die kreative Stadt-KI einer fortlaufenden fiktiven Stadt für deutsche YouTube Shorts.
-Entwickle dieselbe fiktive Stadt über viele Folgen weiter. Zu Beginn gibt es AUSSCHLIESSLICH ein Rathaus. Die Stadt darf ausschließlich durch passende Zuschauerideen aus den neuen Kommentaren wachsen: Baue ein Gebäude oder verbessere etwas nur, wenn ein konkreter Kommentar genau das vorschlägt. Ohne passenden Kommentar darf kein Gebäude hinzukommen und kein Gebäude verbessert werden. Wenn es keine passenden Kommentare gibt, erzähle eine kleine Geschichte rund um die vorhandenen Gebäude, ohne die Stadt baulich zu verändern. Ignoriere private, beleidigende, gefährliche oder unpassende Wünsche. Keine echten Personen oder privaten Daten.
-STADTSTAND: {json.dumps(state,ensure_ascii=False)}
-NEUE KOMMENTARE: {json.dumps(comments,ensure_ascii=False)}
-Erstelle Folge {state.get('episode',0)+1}. Beginne das Skript mit einem starken neugierig machenden Hook in den ersten 2 Sekunden. Erzähle konkret und bildhaft, mit abwechslungsreichem Tempo und einem klaren Spannungsbogen. Beende es mit einer kurzen Frage, die zu einem konkreten Bauvorschlag in den Kommentaren einlädt. Szenen 1-5 müssen jeweils eine klar erkennbare visuelle Aktion beschreiben. Maximal 2 neue Gebäude/Upgrades je Folge; bestehende Gebäude beibehalten. Antworte NUR JSON mit:
-city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), description (Hinweis fiktive KI-Stadt), script (75-105 deutsche Wörter), scenes (genau 5 kurze Szenen), buildings (vollständige Liste max 18; jedes Objekt name,type aus rathaus/haus/hochhaus/cafe/schule/park/shop/feuerwehr/polizei/krankenhaus/bahnhof/stadion/schwimmbad/bruecke, level 1-3, x und y ganze Zahlen -3 bis 3; keine doppelten Koordinaten), population (50-50000), change_summary, hashtags (3-5)."""
+    previous=state.get("history",[])[-30:]
+    previous_stories=[{
+        "episode":item.get("episode"),
+        "title":item.get("title"),
+        "story":item.get("story",""),
+        "change":item.get("change",""),
+        "script":item.get("script","")[:700]
+    } for item in previous]
+    prompt=f"""Du bist Autor, Regisseur und Erzähler einer hochwertigen, fortlaufenden deutschen YouTube-Shorts-Serie über EINE lebendige fiktive Stadt.
+WICHTIG: Jede Folge ist eine NEUE, eigenständige Episode und darf keine frühere Folge nacherzählen oder wiederholen. Lies die Liste der letzten Folgen genau. Verwende NIEMALS denselben Vorfall, dieselbe Entdeckung, denselben Konflikt, denselben Hook, dieselbe Pointe oder dieselbe Szenenfolge erneut. Auch nur leicht umformulierte Wiederholungen sind verboten. Jede Folge braucht einen neuen konkreten Anlass, neue Handlung, andere Schauplätze innerhalb der bestehenden Stadt und eine eigene Auflösung. Wechsle bewusst zwischen Alltag, lustigen Überraschungen, kleinen Rätseln, besonderen Ereignissen, Wetter, Tieren, Verkehr, Festen, Nachbarschaft und anderen harmlosen Stadtgeschichten. Nicht immer Alarm, Baustelle, verschwundene Dinge oder Stromausfall.
+AUFBAU WIE EIN GUTES YOUTUBE-VIDEO:
+1. Starte sofort mitten in einem interessanten Moment in der Stadt: Was passiert HEUTE gerade?
+2. Erzähle dann, wie die Stadtbewohner es bemerken und was sie unternehmen.
+3. Entwickle eine klare kleine Geschichte mit überraschendem, aber nachvollziehbarem Verlauf.
+4. Beende die Geschichte mit einem befriedigenden Ergebnis oder einer neuen offenen Frage.
+5. Die letzte Frage darf die Zuschauer um EINE konkrete Idee für ein zukünftiges Gebäude oder Upgrade bitten.
+Die Stadt soll sich wie eine echte fortlaufende Serie anfühlen: gleiche Stadt und bekannte Gebäude, aber täglich/stündlich ein anderes Erlebnis. Beginne nicht jede Folge mit "Es war ein normaler Morgen", "Heute in unserer Stadt" oder derselben Satzform. Variiere Erzählperspektive, Tageszeit, Wetter, Tempo und Einstieg.
+STADTREGELN: Zu Beginn gibt es AUSSCHLIESSLICH ein Rathaus. Die Stadt darf baulich nur durch einen passenden, konkreten Zuschauerkommentar wachsen. Baue oder verbessere höchstens 2 Dinge pro Folge und nur, wenn ein Kommentar genau diese Sache vorschlägt. Kommentare wie "cool" oder "weiter" sind KEIN Bauvorschlag. Ohne passenden Baukommentar bleiben alle Gebäude exakt unverändert; erzähle dann eine spannende Geschichte mit den vorhandenen Orten. Ignoriere private, beleidigende, gefährliche oder unpassende Wünsche. Keine echten Personen oder privaten Daten.
+LETZTE FOLGEN – NICHT WIEDERHOLEN:
+{json.dumps(previous_stories,ensure_ascii=False)}
+AKTUELLER STADTSTAND:
+{json.dumps(state,ensure_ascii=False)}
+NEUE ZUSCHAUERKOMMENTARE:
+{json.dumps(comments,ensure_ascii=False)}
+Erstelle jetzt Folge {state.get('episode',0)+1}. Das Skript muss 85-115 deutsche Wörter haben und sich natürlich anhören, als würde ein guter YouTube-Erzähler die Geschichte spannend erzählen. Die ersten 2 Sekunden brauchen einen individuellen Hook. Jede der genau 5 Szenen muss eine andere, konkrete visuelle Handlung aus DIESER Folge zeigen und zum gesprochenen Skript passen. Nicht fünfmal dieselbe Stadtansicht. Szenen sollen Kamera, Ort und Aktion konkret beschreiben. Der Titel muss neugierig machen und darf keinem früheren Titel ähneln. Antworte NUR mit einem vollständigen JSON-Objekt:
+city_name, title (beginnt mit Unsere Stadt #{state.get('episode',0)+1}:), description (Hinweis auf fiktive KI-Stadt), script, story (1-2 Sätze: was in dieser Folge wirklich neu passiert; keine allgemeine Zusammenfassung), scenes (genau 5 kurze Szenen), buildings (vollständige Liste max 18; jedes Objekt name,type aus rathaus/haus/hochhaus/cafe/schule/park/shop/feuerwehr/polizei/krankenhaus/bahnhof/stadion/schwimmbad/bruecke, level 1-3, x und y ganze Zahlen -3 bis 3; keine doppelten Koordinaten), population (50-50000), change_summary, hashtags (3-5)."""
     def parse_json(text):
         text=(text or "").strip()
         if text.startswith("```"):
@@ -362,7 +382,7 @@ def main():
     video=make_video(d); verify_video(video); dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
     vid=None if dry else upload(video,d)
     state.update({"city_name":d["city_name"],"episode":d["episode"],"population":d["population"],"buildings":d["buildings"]})
-    state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"change":d["change_summary"],"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
+    state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"story":d.get("story",""),"script":d.get("script",""),"change":d["change_summary"],"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
     state["history"]=state["history"][-100:]; STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
     (OUT/"latest.json").write_text(json.dumps({"title":d["title"],"episode":d["episode"],"city_name":d["city_name"],"video_id":vid,"change":d["change_summary"]},ensure_ascii=False,indent=2),encoding="utf-8")
     log("Folge fertig; Stadtstand gespeichert. "+("Video wartet als Artifact auf Freigabe." if dry else "Video wurde hochgeladen."))
