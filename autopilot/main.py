@@ -72,31 +72,45 @@ def get_comments(state):
         log(f"Kommentare konnten nicht gelesen werden: {str(e)[:180]}")
         return []
 
-def research_shorts_trends():
-    """Sammelt öffentlich auffindbare aktuelle YouTube-Such-RSS-Titel als Inspirationssignale."""
-    try:
-        import feedparser
-        import urllib.parse
-        queries=["Roblox Shorts story","Roblox Shorts funny","Roblox animation Shorts"]
-        observations=[]
-        for q in queries:
-            url="https://www.youtube.com/feeds/videos.xml?search_query="+urllib.parse.quote(q)
-            req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 AI-ERIK trend research"})
-            with urllib.request.urlopen(req,timeout=12) as response:
-                feed=feedparser.parse(response.read())
-            for entry in feed.entries[:6]:
-                title=re.sub(r"\\s+"," ",entry.get("title","")).strip()
-                if title: observations.append({"query":q,"title":title[:180]})
-        unique=[]; seen=set()
-        for item in observations:
-            key=item["title"].lower()
-            if key not in seen: seen.add(key); unique.append(item)
-        log(f"Trend-Inspiration: {len(unique)} aktuelle Such-RSS-Titel gesammelt (kein verifizierter Sound/View-Ranking).")
-        return unique[:18]
-    except Exception as e:
-        log(f"Trend-Recherche nicht verfügbar: {str(e)[:160]}")
-        return []
+def research_shorts_trends(state=None):
+    """Breite, zeitlich begrenzte Trendbeobachtung über viele Shorts-Themen."""
+    import urllib.parse
+    import feedparser
+    queries = ["trending YouTube Shorts","funny viral Shorts","gaming Shorts trend","Minecraft Shorts",
+        "Roblox Shorts","AI animation Shorts","animated story Shorts","meme Shorts trend",
+        "satisfying videos Shorts","animals funny Shorts","football skills Shorts","science facts Shorts",
+        "DIY creative Shorts","food viral Shorts","technology Shorts","comedy skits Shorts",
+        "mystery story Shorts","German viral Shorts","creative editing Shorts","popular sound Shorts"]
+    episode=int((state or {}).get("episode",0)); shift=(episode*3)%len(queries); queries=queries[shift:]+queries[:shift]
+    try: minutes=max(10,min(15,int(os.getenv("TREND_RESEARCH_MINUTES","10"))))
+    except ValueError: minutes=10
+    started=time.monotonic(); deadline=started+minutes*60; observations=[]; seen=set(); round_no=0
+    log(f"Trend-Analyse gestartet: mindestens {minutes} Minuten, viele Themenbereiche.")
+    while time.monotonic()<deadline:
+        offset=(round_no*3)%len(queries); batch=[queries[(offset+j)%len(queries)] for j in range(3)]
+        for query in batch:
+            try:
+                url="https://www.youtube.com/feeds/videos.xml?search_query="+urllib.parse.quote(query)
+                req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 AI-ERIK trend research"})
+                with urllib.request.urlopen(req,timeout=15) as response: feed=feedparser.parse(response.read())
+                for entry in feed.entries[:8]:
+                    title=re.sub(r"\\s+"," ",entry.get("title","")).strip(); key=title.casefold()
+                    if title and key not in seen:
+                        seen.add(key); observations.append({"query":query,"title":title[:180],"published":entry.get("published","")[:80]})
+            except Exception as exc: log(f"Trend-Feed übersprungen ({query}): {str(exc)[:100]}")
+        round_no+=1
+        log(f"Trend-Analyse Runde {round_no}: {len(observations)} verschiedene Titel nach {(time.monotonic()-started)/60:.1f} Minuten.")
+        if time.monotonic()<deadline: time.sleep(min(25,max(1,deadline-time.monotonic())))
+    counts={}
+    for item in observations: counts[item["query"]]=counts.get(item["query"],0)+1
+    ranked=sorted(counts.items(),key=lambda x:x[1],reverse=True)
+    result={"duration_minutes":round((time.monotonic()-started)/60,1),"observations":observations[:70],
+        "top_signals":[{"topic":name,"items_found":count} for name,count in ranked[:8]],
+        "limitations":"YouTube-Such-RSS-Inspiration; keine verifizierten Views, Rankings oder Sound-Nutzungszahlen."}
+    log(f"Trend-Analyse abgeschlossen: {result['duration_minutes']} Minuten, {len(observations)} Titel.")
+    return result
 
+def local_story_fallback
 def local_story_fallback(state, comments):
     """Erstellt ohne externe Text-KI eine vollständige, sichere Story mit fünf Bildszenen."""
     episode=int(state.get("episode",0))+1
@@ -143,125 +157,93 @@ def local_story_fallback(state, comments):
     }
 
 def generate(state,comments,trend_data=None):
-    previous=state.get("history",[])[-30:]
-    previous_stories=[{"episode":x.get("episode"),"title":x.get("title"),"story":x.get("story",""),"script":x.get("script","")[:700]} for x in previous]
-    prompt=f"""Du bist Autor und Erzähler einer hochwertigen deutschen YouTube-Shorts-Serie. Es geht NICHT um eine Stadt, keinen Stadtaufbau und keine Gebäude. Erfinde spannende, eigenständige Geschichten mit interessanten Figuren und abwechslungsreichen Schauplätzen.
-Jede Folge ist eine neue Episode mit einem völlig neuen Ereignis. Wiederhole niemals frühere Geschichten, Figuren-Konstellationen, Konflikte, Überraschungen, Hooks, Titel oder Szenen. Lies die letzten Episoden und vermeide auch nur leicht umformulierte Wiederholungen. Wechsle bewusst zwischen Abenteuer, Humor, Rätsel, Natur, Technik, Weltraum, Freundschaft, Geheimnissen und anderen harmlosen Themen.
-VIDEO-AUFBAU: Beginne sofort mitten in einem spannenden Moment. Stelle eine Hauptfigur und ihr Ziel vor. Entwickle eine klare Handlung mit Hindernis und überraschender Wendung. Gib der Geschichte ein befriedigendes Ende oder einen starken Cliffhanger. Keine Begrüßung und keine lange Einleitung.
-SHORTS-EDITING: Plane einen dynamischen, aber nicht hektischen Schnitt: in den ersten 1-2 Sekunden ein klarer visueller Hook, danach abwechslungsreiche Kameradistanzen, gezielte kurze Zooms bei Überraschungen, passend getimte Reaktionen, Bewegungen und Übergänge zwischen den fünf Szenen. Vermeide Leerlauf, Wiederholungen, übermäßige Effekte und generische KI-Floskeln. Die Handlung soll eigenständig und glaubwürdig erzählt werden und nicht einen konkreten Creator, dessen Stimme, identische Edit-Signatur oder ein bestimmtes virales Video kopieren.
-TREND-ORIENTIERUNG: Analysiere die Trend-Inspiration auf Hook-Muster, Themen, Timing und Formate, aber kopiere weder Titel noch Story, Creator, Edit-Signatur oder konkretes Video. Erfinde eine eigenständige Story mit aktuellem Gefühl. Plane in den Szenen sinnvolle Schnittpunkte, kurze Zooms, Bewegungsakzente und originale Sounddesign-Hinweise (z.B. whoosh, impact, ambience), ohne virale Sounds ungeprüft zu übernehmen. Keine Behauptungen über verifizierte Views, Rankings oder Trendsounds, wenn diese Daten nicht geliefert wurden.
-Zuschauerkommentare dürfen unverbindliche Ideen für spätere Geschichten sein. Keine echten Personen, privaten Daten oder gefährlichen Handlungen.
-LETZTE FOLGEN – NICHT WIEDERHOLEN:
+    previous=state.get("history",[])[-35:]
+    previous_stories=[{"episode":x.get("episode"),"title":x.get("title"),"topic":x.get("topic"),
+        "format":x.get("format"),"story":x.get("story",""),"script":x.get("script","")[:500]} for x in previous]
+    learning=state.get("learning",{})
+    prompt=f"""Du bist AI ERIK, ein kreativer und sicherer YouTube-Shorts-Producer.
+Du darfst NICHT immer Roblox oder denselben Cartoon-Stil machen. Wechsle eigenständig zwischen Gaming, Comedy, Animation, Mini-Doku, Tieren, Technik, KI, Fakten, DIY, Mystery, Sport, Essen, Storytime, visuellen Rätseln und anderen jugendfreien Themen.
+ANALYSE: Werte die gelieferten aktuellen Suchsignale aus und wähle selbst das stärkste passende Thema. Berücksichtige, welche Themen und Formate zuletzt oft vorkamen. Die Suchsignale sind Inspiration, keine bestätigten View-Zahlen.
+KREATIVITÄT: Erfinde eine eigene Idee. Kopiere kein fremdes Video, keinen Creator, keine identische Szene, keinen geschützten Charakter und keine fremde Stimme. Nutze nur allgemeine Erfolgsprinzipien wie starken Einstieg, klare Handlung, Überraschung und gutes Tempo.
+PRODUKTION: Plane genau fünf Szenen mit konkreter sichtbarer Handlung. Wähle den Stil passend zum Thema: z.B. 3D-Cartoon, 2D-Animation, Gaming-Optik, Motion Graphics oder dokumentarischer Stil. Nicht automatisch Roblox.
+EDITING: Plane Hook in den ersten 1-2 Sekunden, abwechslungsreiche Einstellungsgrößen, passende Schnitte, gezielte Zooms, Bewegungsübergänge und Höhepunkt. Keine Effekte ohne Zweck.
+SOUND: Plane passende Geräusche, Atmosphäre und Musik je Szene. Nur eigene/originale oder ausdrücklich lizenzierte/freigegebene Audios. Keine erfundenen Sound-IDs und keine Behauptung, geschützte Trend-Sounds eingebaut zu haben.
+STIMME: Entscheide über voice_required selbst. Bei Erklärungen oder Dialogen ja; bei rein visuellen, Musik- oder Comedy-Clips kann es false sein. Skript trotzdem als Produktionsnotiz liefern.
+LERNSYSTEM: Nutze bisherige Folgen und Häufigkeiten. Vermeide Wiederholungen und teste neue Kombinationen.
+LETZTE FOLGEN:
 {json.dumps(previous_stories,ensure_ascii=False)}
-NEUE ZUSCHAUERKOMMENTARE ALS OPTIONALE IDEEN:
+LERNPROFIL:
+{json.dumps(learning,ensure_ascii=False)[:9000]}
+ZUSCHAUERIDEEN:
 {json.dumps(comments,ensure_ascii=False)}
-TREND-INSPIRATION AUS AKTUELLEN YOUTUBE-SUCH-RSS-TITELN (nur Ideen, keine verifizierten Views/Sounds):
-{json.dumps(trend_data or [],ensure_ascii=False)}
-Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 50-65 deutsche Wörter haben. Die ersten zwei Sekunden brauchen einen individuellen Hook. Der gesamte Film MUSS durchgehend im hochwertigen Roblox-Story-Short-Stil aussehen: blockige Roblox-Avatare aus klaren Quadern (Kopf, Torso, Arme, Beine), glatte leicht plastikartige Oberflächen, einfache Texturen, Low-Poly-Optik. Hochformat 9:16. Die Figuren sollen sich wie Menschen bewegen: glaubwürdiges Gehen, Rennen, Sitzen, Greifen, Zeigen, Drehen, Reagieren und passende Gesichtsausdrücke, aber weiterhin mit Roblox-Körperbau und Roblox-Gelenken. KEIN Realfilm, KEINE Fotorealistik, KEIN anderer Animationsstil. KEINE Untertitel, KEINE eingeblendeten Wörter, KEINE Schrift, KEINE Texttafeln, KEINE Logos und KEINE Wasserzeichen. Erfinde 1-3 Hauptfiguren mit genauer, wiedererkennbarer Beschreibung von Haaren, Gesicht, Hautfarbe, Kleidung, Farben und Persönlichkeit; dieselben Figuren müssen in allen fünf Szenen exakt gleich aussehen. Erstelle genau 5 unterschiedliche animierte Szenen in richtiger Handlungsreihenfolge. Jede Szene muss konkret zeigen, WAS die Figuren gerade tun und WAS dadurch passiert. Wähle Ort, Hintergrund, Gegenstände, Wetter, Tageszeit und Licht ausschließlich passend zur jeweiligen Geschichte; verwende NICHT automatisch die Fahrradstraße, Vorstadthäuser oder das Fahrrad aus einer Beispielszene. Zeige keine beliebigen Standbilder: Figuren müssen sichtbar handeln und miteinander oder mit ihrer Umgebung interagieren. Wechsle passende Kameraperspektiven und beschreibe pro Szene Ort, sichtbare Aktion, Bewegung, wichtige Objekte und Kamerabewegung. Titel kurz, neugierig und nicht ähnlich zu früheren Titeln. Antworte nur mit JSON mit diesen Feldern: title (beginnt mit Folge {state.get('episode',0)+1}:), description (kurze Beschreibung als fiktive KI-Geschichte), script, story (1-2 Sätze über das neue Ereignis), visual_style (konkrete Beschreibung des einheitlichen Cartoon-Stils), characters (Liste mit name, appearance, clothing, personality), scenes (genau 5 kurze visuelle Szenen), hashtags (3-5)."""
-    def parse_json(text):
-        text=(text or "").strip()
-        if text.startswith("```"):
-            text=re.sub(r"^\`\`\`(?:json)?\s*","",text,flags=re.I)
-            text=re.sub(r"\s*\`\`\`$","",text)
-        left=text.find("{"); right=text.rfind("}")
+AKTUELLE TREND-SIGNALE:
+{json.dumps(trend_data or {},ensure_ascii=False)[:14000]}
+Erstelle Folge {state.get('episode',0)+1}. Skript 45-80 deutsche Wörter. Antworte nur mit JSON:
+title (beginnt mit Folge {state.get('episode',0)+1}:), description, topic, format, trend_reason, script, story, visual_style,
+characters (Liste mit name, appearance, clothing, personality; darf leer sein), scenes (genau 5),
+edit_plan (genau 5 Schnitt-/Kameraanweisungen), sound_plan (genau 5 Soundhinweise),
+voice_required (true/false), hashtags (3-5).
+Keine Untertitel, eingeblendeten Wörter, Logos oder Wasserzeichen. Keine gefährlichen Challenges, privaten Daten oder falschen Tatsachenbehauptungen."""
+    def parse_json(raw):
+        raw=(raw or "").strip()
+        if raw.startswith("```"):
+            raw=re.sub(r"^```(?:json)?\\s*","",raw,flags=re.I); raw=re.sub(r"\\s*```$","",raw)
+        left,right=raw.find("{"),raw.rfind("}")
         if left<0 or right<left: raise ValueError("KI lieferte kein JSON")
-        return json.loads(text[left:right+1])
-
+        return json.loads(raw[left:right+1])
     def check(obj):
-        keys=["title","description","script","scenes","story","visual_style","characters","hashtags"]
-        if not isinstance(obj,dict) or any(k not in obj for k in keys):
-            raise ValueError("KI-Ausgabe unvollständig")
-        if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5:
-            raise ValueError("Es müssen genau fünf Szenen sein")
-        if not 45<=len(str(obj["script"]).split())<=80:
-            raise ValueError("Skript muss zwischen 45 und 80 Wörtern haben, damit es zum 25-Sekunden-Cartoon passt")
-        return obj
-
-    # Gemini versuchen; bei Quota-Fehler automatisch zu OpenRouter wechseln.
+        required=["title","description","script","scenes","story","visual_style","characters","hashtags"]
+        if not isinstance(obj,dict) or any(k not in obj for k in required): raise ValueError("KI-Ausgabe unvollständig")
+        if not isinstance(obj["scenes"],list) or len(obj["scenes"])!=5: raise ValueError("Es müssen genau fünf Szenen sein")
+        if not 35<=len(str(obj["script"]).split())<=90: raise ValueError("Skriptlänge außerhalb des erlaubten Bereichs")
+        obj.setdefault("topic","Kreative Unterhaltung"); obj.setdefault("format","Animation")
+        obj.setdefault("trend_reason","Eigenständige Idee aus der Trendanalyse")
+        obj.setdefault("edit_plan",["Dynamischer Einstieg"]+["Passender Schnitt und Perspektivwechsel"]*4)
+        obj.setdefault("sound_plan",["Originaler Soundeffekt"]*5); obj.setdefault("voice_required",True)
+        if not isinstance(obj["edit_plan"],list) or len(obj["edit_plan"])!=5: obj["edit_plan"]=["Passender Schnitt"]*5
+        if not isinstance(obj["sound_plan"],list) or len(obj["sound_plan"])!=5: obj["sound_plan"]=["Originaler Soundeffekt"]*5
+        obj["voice_required"]=bool(obj["voice_required"]); return obj
     if GEMINI:
         try:
             import google.generativeai as genai
-            genai.configure(api_key=GEMINI)
-            response=genai.GenerativeModel(MODEL).generate_content(prompt)
+            genai.configure(api_key=GEMINI); response=genai.GenerativeModel(MODEL).generate_content(prompt)
             raw=getattr(response,"text",None)
             if raw and raw.strip():
-                obj=check(parse_json(raw))
-                log("Gemini hat die Cartoon-Story geplant")
-                return obj
-            log("Gemini lieferte eine leere Antwort; OpenRouter wird versucht")
-        except Exception as e:
-            log(f"Gemini nicht verfügbar; OpenRouter wird versucht: {str(e)[:150]}")
-
+                obj=check(parse_json(raw)); log("Gemini plante Thema, Story, Schnitt und Sound."); return obj
+            log("Gemini lieferte eine leere Antwort; OpenRouter wird versucht.")
+        except Exception as exc: log(f"Gemini nicht verfügbar; OpenRouter wird versucht: {str(exc)[:150]}")
     if ROUTER:
-        # Nur aktuell gelistete kostenlose Textmodelle verwenden. Die Modellliste
-        # ändert sich häufig; deshalb keine veralteten, fest codierten IDs.
         models=["openrouter/free"]
         try:
-            req=urllib.request.Request("https://openrouter.ai/api/v1/models",
-                headers={"Authorization":"Bearer "+ROUTER,"Accept":"application/json"})
-            with urllib.request.urlopen(req,timeout=25) as response:
-                catalog=json.loads(response.read().decode())
+            req=urllib.request.Request("https://openrouter.ai/api/v1/models",headers={"Authorization":"Bearer "+ROUTER,"Accept":"application/json"})
+            with urllib.request.urlopen(req,timeout=25) as response: catalog=json.loads(response.read().decode())
             for item in catalog.get("data",[]):
-                model_id=item.get("id","")
-                arch=item.get("architecture") or {}
-                modalities=arch.get("output_modalities") or []
-                pricing=item.get("pricing") or {}
-                if (model_id.endswith(":free") and "text" in modalities
-                    and str(pricing.get("prompt","")) in ("0","0.0","0.000000")
-                    and str(pricing.get("completion","")) in ("0","0.0","0.000000")
-                    and model_id not in models):
-                    models.append(model_id)
+                mid=item.get("id",""); arch=item.get("architecture") or {}; pricing=item.get("pricing") or {}
+                if mid.endswith(":free") and "text" in (arch.get("output_modalities") or []) and str(pricing.get("prompt","")) in ("0","0.0","0.000000") and str(pricing.get("completion","")) in ("0","0.0","0.000000") and mid not in models: models.append(mid)
                 if len(models)>=6: break
-            log(f"{len(models)-1} aktuell gelistete kostenlose Textmodelle als Fallback gefunden")
-        except Exception as e:
-            log(f"Aktuelle OpenRouter-Modellliste nicht abrufbar: {str(e)[:140]}")
-
-        failures=[]
+            log(f"{len(models)-1} aktuell kostenlose Textmodelle als Fallback gefunden.")
+        except Exception as exc: log(f"Modellliste nicht abrufbar: {str(exc)[:140]}")
         for model in models:
-            # Erst mit JSON-Modus versuchen. Einige kostenlose Provider unterstützen
-            # response_format nicht; dann dieselbe Anfrage ohne diese Option wiederholen.
-            base_payload={"model":model,"messages":[
-                {"role":"system","content":"Du schreibst einen sicheren, originellen Cartoon-Kurzfilm. Antworte ausschließlich mit einem vollständigen JSON-Objekt."},
-                {"role":"user","content":prompt}],
-                "temperature":0.7,"max_tokens":3000}
+            base={"model":model,"messages":[{"role":"system","content":"Du bist ein origineller, sicherer und vielseitiger Shorts-Produzent. Antworte nur als JSON."},{"role":"user","content":prompt}],"temperature":0.85,"max_tokens":4000}
             for json_mode in (True,False):
                 try:
-                    payload=dict(base_payload)
+                    payload=dict(base)
                     if json_mode: payload["response_format"]={"type":"json_object"}
-                    req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
-                        data=json.dumps(payload).encode(),
-                        headers={"Authorization":"Bearer "+ROUTER,"Content-Type":"application/json",
-                        "HTTP-Referer":"https://github.com/hoffmannerik1-eng/AI","X-Title":"AI ERIK Stadt"},
-                        method="POST")
-                    with urllib.request.urlopen(req,timeout=100) as response:
-                        data=json.loads(response.read().decode())
-                    choices=data.get("choices") or []
-                    message=(choices[0].get("message") or {}) if choices else {}
-                    raw=message.get("content")
-                    if isinstance(raw,list):
-                        raw="".join(x.get("text","") for x in raw if isinstance(x,dict))
-                    if not isinstance(raw,str) or not raw.strip():
-                        raise ValueError("Modell lieferte leeren Inhalt")
-                    obj=check(parse_json(raw))
-                    log(f"OpenRouter-Modell {model} hat die Cartoon-Story erstellt")
-                    return obj
-                except Exception as e:
-                    detail=str(e)
-                    if isinstance(e,urllib.error.HTTPError):
-                        try: detail=e.read().decode()[:260]
-                        except Exception: pass
-                    failures.append(f"{model} ({'JSON-Modus' if json_mode else 'Standard'}): {detail[:180]}")
-                    # Wenn nur das JSON-Format nicht unterstützt wird, direkt
-                    # ohne response_format erneut versuchen.
-                    if json_mode and isinstance(e,urllib.error.HTTPError) and e.code in (400,404,422):
-                        continue
-                    break
-            log(f"OpenRouter-Modell {model} nicht verfügbar; nächstes kostenloses Modell wird versucht")
-        log("Alle kostenlosen Text-KIs sind ausgefallen; lokale Story wird ohne API erstellt.")
-        return local_story_fallback(state,comments)
-    log("Keine Text-KI konfiguriert; lokale Story wird ohne API erstellt.")
+                    req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",data=json.dumps(payload).encode(),
+                        headers={"Authorization":"Bearer "+ROUTER,"Content-Type":"application/json","HTTP-Referer":"https://github.com/hoffmannerik1-eng/AI","X-Title":"AI ERIK Shorts"},method="POST")
+                    with urllib.request.urlopen(req,timeout=100) as response: data=json.loads(response.read().decode())
+                    choices=data.get("choices") or []; message=(choices[0].get("message") or {}) if choices else {}; raw=message.get("content")
+                    if isinstance(raw,list): raw="".join(x.get("text","") for x in raw if isinstance(x,dict))
+                    if not isinstance(raw,str) or not raw.strip(): raise ValueError("Modell lieferte leeren Inhalt")
+                    obj=check(parse_json(raw)); log(f"OpenRouter-Modell {model} plante Folge, Schnitt und Sound."); return obj
+                except Exception as exc:
+                    if json_mode and isinstance(exc,urllib.error.HTTPError) and exc.code in (400,404,422): continue
+                    log(f"OpenRouter-Modell {model} nicht verfügbar: {str(exc)[:180]}"); break
+        log("Alle kostenlosen Text-KIs ausgefallen; lokale Story wird verwendet.")
+    else: log("Keine Text-KI konfiguriert; lokale Story wird verwendet.")
     return local_story_fallback(state,comments)
 
+async def voice
 async def voice(txt,path): await edge_tts.Communicate(txt,"de-DE-ConradNeural").save(str(path))
 
 def create_local_cartoon(raw,d,seconds):
@@ -559,38 +541,48 @@ def upload(video,d):
     r=yt.videos().insert(part="snippet,status",body=body,media_body=MediaFileUpload(str(video),mimetype="video/mp4",resumable=True)).execute()
     return r.get("id")
 
-def main():
-    log("AI ERIK STORY-AUTOPILOT gestartet – Serienmodus aktiv")
-    state=load_state()
-    dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
-    # GitHub Actions hat ein Zeitlimit von 6 Stunden. Wir beenden vorher
-    # sauber, damit Episodenverlauf und Videos noch gespeichert werden können.
-    deadline=time.monotonic()+5.5*60*60
-    episode_dir=OUT/"episodes"
-    episode_dir.mkdir(exist_ok=True)
-    completed=0
+def update_learning(state,data):
+    """Speichert Themen-, Format- und Stilvielfalt für spätere Produktionen."""
+    profile=state.setdefault("learning",{})
+    for key in ("topics","formats","styles"): profile.setdefault(key,{})
+    for key,value in (("topics",data.get("topic","Unbekannt")),("formats",data.get("format","Unbekannt")),("styles",data.get("visual_style","Unbekannt"))):
+        label=str(value or "Unbekannt")[:100]; profile[key][label]=int(profile[key].get(label,0))+1
+    recent=profile.setdefault("recent_approaches",[])
+    recent.append({"episode":data.get("episode"),"topic":data.get("topic"),"format":data.get("format"),"style":data.get("visual_style"),"trend_reason":data.get("trend_reason","")})
+    profile["recent_approaches"]=recent[-40:]; state["learning"]=profile
 
+
+def main():
+    log("AI ERIK MULTI-FORMAT SHORTS-AUTOPILOT gestartet.")
+    state=load_state(); dry=os.getenv("DRY_RUN","true").lower() in ("1","true","yes")
+    deadline=time.monotonic()+5.5*60*60; episode_dir=OUT/"episodes"; episode_dir.mkdir(exist_ok=True); completed=0
     while time.monotonic()<deadline:
         ideas=get_comments(state)
-        trend_data=research_shorts_trends()
-        d=generate(state,ideas,trend_data)
-        d["episode"]=int(state.get("episode",0))+1
-        log(f"Neue Geschichte | Folge {d['episode']} | {d['title']}")
-        video=make_video(d)
-        verify_video(video)
-        vid=None if dry else upload(video,d)
-
-        # Jede fertige Folge separat aufbewahren, bevor die nächste beginnt.
-        archive=episode_dir/f"episode_{d['episode']:05d}.mp4"
-        shutil.copy2(video,archive)
-
-        state.update({"episode":d["episode"]})
-        state.setdefault("history",[]).append({"episode":d["episode"],"title":d["title"],"story":d.get("story",""),"script":d.get("script",""),"change":d.get("story",""),"video_id":vid,"created_at":datetime.now(timezone.utc).isoformat()})
-        state["history"]=state["history"][-100:]
+        trend_data=research_shorts_trends(state)
+        data=generate(state,ideas,trend_data); data["episode"]=int(state.get("episode",0))+1
+        log(f"Neue Folge {data['episode']}: {data['title']} | {data.get('topic')} | {data.get('format')}")
+        video=make_video(data); verify_video(video)
+        archive=episode_dir/f"episode_{data['episode']:05d}.mp4"; shutil.copy2(video,archive)
+        video_id=None; upload_pending=False
+        if not dry:
+            try: video_id=upload(video,data)
+            except Exception as exc:
+                detail=str(exc)
+                upload_pending=True
+                if "uploadLimitExceeded" in detail or "number of videos they may upload" in detail:
+                    log("YouTube-Tageslimit erreicht. Video bleibt gespeichert; Workflow läuft weiter.")
+                else: log("Upload fehlgeschlagen; Video bleibt gespeichert: "+detail[:240])
+        else: log("DRY_RUN aktiv: Video wurde nicht veröffentlicht.")
+        state.update({"episode":data["episode"]})
+        state.setdefault("history",[]).append({"episode":data["episode"],"title":data["title"],"topic":data.get("topic"),
+            "format":data.get("format"),"trend_reason":data.get("trend_reason"),"story":data.get("story",""),
+            "script":data.get("script",""),"edit_plan":data.get("edit_plan",[]),"sound_plan":data.get("sound_plan",[]),
+            "video_id":video_id,"upload_pending":upload_pending,"created_at":datetime.now(timezone.utc).isoformat()})
+        state["history"]=state["history"][-100:]; update_learning(state,data)
         STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
-        (OUT/"latest.json").write_text(json.dumps({"title":d["title"],"episode":d["episode"],"video_id":vid,"story":d.get("story","")},ensure_ascii=False,indent=2),encoding="utf-8")
-        completed+=1
-        log(f"Folge {d['episode']} fertig und gespeichert. Starte automatisch die nächste Folge.")
+        (OUT/"latest.json").write_text(json.dumps({"title":data["title"],"episode":data["episode"],"video_id":video_id,
+            "topic":data.get("topic"),"format":data.get("format"),"upload_pending":upload_pending,"story":data.get("story","")},ensure_ascii=False,indent=2),encoding="utf-8")
+        completed+=1; log(f"Folge {data['episode']} gespeichert. Lernprofil für nächste Folge aktualisiert.")
+    log(f"Serienlauf beendet: {completed} Folge(n). Verlauf und Lernprofil gespeichert.")
 
-    log(f"Serienlauf beendet: {completed} neue Folge(n). Episodenverlauf gespeichert. "+("Videos liegen als Artifact bereit." if dry else "Videos wurden hochgeladen."))
 if __name__=="__main__": main()
