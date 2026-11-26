@@ -1,4 +1,4 @@
-import os, re, json, random, asyncio, subprocess, textwrap, math
+import os, re, json, random, asyncio, subprocess, textwrap, math, urllib.request, urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 import feedparser
@@ -12,11 +12,13 @@ from googleapiclient.http import MediaFileUpload
 ROOT = Path(__file__).parent
 OUT = ROOT / "output"
 OUT.mkdir(exist_ok=True)
-GEMINI_KEY = os.environ["GEMINI_API_KEY"]
+GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+GROQ_KEY = os.getenv("GROQ_API_KEY", "")
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 MAX_DAILY = int(os.getenv("MAX_DAILY_VIDEOS", "1"))
 PRIVACY = os.getenv("YOUTUBE_PRIVACY_STATUS", "private").lower()
-genai.configure(api_key=GEMINI_KEY)
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
 
 def log(msg):
     print(f"[{datetime.now(timezone.utc).isoformat()}] {msg}", flush=True)
@@ -56,10 +58,51 @@ script (deutscher Sprechertext, 75 bis 105 Wörter),
 scenes (genau 5 kurze Szenentexte, je max 8 Wörter),
 hashtags (Array mit 3 bis 5 passenden Hashtags).
 """
-    model = genai.GenerativeModel(MODEL_NAME)
-    response = model.generate_content(prompt)
-    raw = response.text.strip()
-    raw = re.sub(r"^\x60{3}(?:json)?\s*|\s*\x60{3}$", "", raw, flags=re.I)
+    raw = ""
+    primary_error = None
+
+    if GEMINI_KEY:
+        try:
+            log(f"KI 1: Gemini ({MODEL_NAME}) wird verwendet")
+            model = genai.GenerativeModel(MODEL_NAME)
+            response = model.generate_content(prompt)
+            raw = response.text.strip()
+        except Exception as exc:
+            primary_error = exc
+            log(f"Gemini nicht verfügbar: {str(exc)[:300]}")
+    else:
+        log("GEMINI_API_KEY fehlt; Gemini wird übersprungen")
+
+    if not raw:
+        if not GROQ_KEY:
+            reason = f" Gemini-Fehler: {str(primary_error)[:250]}" if primary_error else ""
+            raise RuntimeError("Keine KI verfügbar. Füge GEMINI_API_KEY und/oder GROQ_API_KEY als GitHub Actions Secrets hinzu." + reason)
+        try:
+            groq_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+            log(f"KI 2: Groq ({groq_model}) übernimmt")
+            payload = {
+                "model": groq_model,
+                "messages": [
+                    {"role": "system", "content": "Du erstellst sichere, sachliche, jugendgeeignete deutschsprachige YouTube-Shorts. Antworte ausschließlich mit gültigem JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_completion_tokens": 1400,
+                "response_format": {"type": "json_object"}
+            }
+            request = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(request, timeout=60) as response:
+                result = json.loads(response.read().decode("utf-8"))
+            raw = result["choices"][0]["message"]["content"].strip()
+        except Exception as exc:
+            raise RuntimeError(f"Gemini und Groq konnten nicht generieren. Groq-Fehler: {str(exc)[:400]}") from exc
+
+    raw = re.sub(r"^`{3}(?:json)?\s*|\s*`{3}$", "", raw, flags=re.I)
     data = json.loads(raw)
     if not all(k in data for k in ("title", "description", "script", "scenes", "hashtags")):
         raise ValueError("KI-Antwort unvollständig")
