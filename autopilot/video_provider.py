@@ -70,11 +70,11 @@ def generate_video(data, output_dir, destination, clip_duration):
     folder.mkdir(parents=True, exist_ok=True)
 
     shot_directions = [
-        "OPENING ESTABLISHING SHOT: begin high above the town, then smoothly descend toward the main square; reveal the episode's central event.",
-        "GROUND-LEVEL TRACKING SHOT: move along a street between the existing buildings; show people, vehicles and the specific scene action.",
-        "CLOSE DETAIL SHOT: focus on the exact object or activity described; use a gentle cinematic push-in and visible environmental movement.",
-        "DYNAMIC ORBIT SHOT: make a smooth partial orbit around the location involved in this scene; clearly show what happens.",
-        "CLOSING WIDE SHOT: pull back to a beautiful elevated view of the whole town; end with a memorable visual.",
+        "OPENING ACTION SHOT: begin close to the main character in the middle of the surprising event; reveal the central mystery.",
+        "FOLLOW SHOT: track the main character through the scene while the key action unfolds clearly.",
+        "CLOSE DETAIL SHOT: focus on the important object, clue or expression; use a gentle cinematic push-in.",
+        "DYNAMIC SHOT: reveal the obstacle or surprising turn with a smooth camera move.",
+        "CLOSING SHOT: finish on the character reaction or the story final reveal.",
     ]
 
     normalized = []
