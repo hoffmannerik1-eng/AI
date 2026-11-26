@@ -155,6 +155,8 @@ LETZTE FOLGEN – NICHT WIEDERHOLEN:
 {json.dumps(previous_stories,ensure_ascii=False)}
 NEUE ZUSCHAUERKOMMENTARE ALS OPTIONALE IDEEN:
 {json.dumps(comments,ensure_ascii=False)}
+TREND-INSPIRATION AUS AKTUELLEN YOUTUBE-SUCH-RSS-TITELN (nur Ideen, keine verifizierten Views/Sounds):
+{json.dumps(trend_data or [],ensure_ascii=False)}
 Erstelle Folge {state.get('episode',0)+1}. Das Skript soll 50-65 deutsche Wörter haben. Die ersten zwei Sekunden brauchen einen individuellen Hook. Der gesamte Film MUSS durchgehend im hochwertigen Roblox-Story-Short-Stil aussehen: blockige Roblox-Avatare aus klaren Quadern (Kopf, Torso, Arme, Beine), glatte leicht plastikartige Oberflächen, einfache Texturen, Low-Poly-Optik. Hochformat 9:16. Die Figuren sollen sich wie Menschen bewegen: glaubwürdiges Gehen, Rennen, Sitzen, Greifen, Zeigen, Drehen, Reagieren und passende Gesichtsausdrücke, aber weiterhin mit Roblox-Körperbau und Roblox-Gelenken. KEIN Realfilm, KEINE Fotorealistik, KEIN anderer Animationsstil. KEINE Untertitel, KEINE eingeblendeten Wörter, KEINE Schrift, KEINE Texttafeln, KEINE Logos und KEINE Wasserzeichen. Erfinde 1-3 Hauptfiguren mit genauer, wiedererkennbarer Beschreibung von Haaren, Gesicht, Hautfarbe, Kleidung, Farben und Persönlichkeit; dieselben Figuren müssen in allen fünf Szenen exakt gleich aussehen. Erstelle genau 5 unterschiedliche animierte Szenen in richtiger Handlungsreihenfolge. Jede Szene muss konkret zeigen, WAS die Figuren gerade tun und WAS dadurch passiert. Wähle Ort, Hintergrund, Gegenstände, Wetter, Tageszeit und Licht ausschließlich passend zur jeweiligen Geschichte; verwende NICHT automatisch die Fahrradstraße, Vorstadthäuser oder das Fahrrad aus einer Beispielszene. Zeige keine beliebigen Standbilder: Figuren müssen sichtbar handeln und miteinander oder mit ihrer Umgebung interagieren. Wechsle passende Kameraperspektiven und beschreibe pro Szene Ort, sichtbare Aktion, Bewegung, wichtige Objekte und Kamerabewegung. Titel kurz, neugierig und nicht ähnlich zu früheren Titeln. Antworte nur mit JSON mit diesen Feldern: title (beginnt mit Folge {state.get('episode',0)+1}:), description (kurze Beschreibung als fiktive KI-Geschichte), script, story (1-2 Sätze über das neue Ereignis), visual_style (konkrete Beschreibung des einheitlichen Cartoon-Stils), characters (Liste mit name, appearance, clothing, personality), scenes (genau 5 kurze visuelle Szenen), hashtags (3-5)."""
     def parse_json(text):
         text=(text or "").strip()
@@ -570,7 +572,8 @@ def main():
 
     while time.monotonic()<deadline:
         ideas=get_comments(state)
-        d=generate(state,ideas)
+        trend_data=research_shorts_trends()
+        d=generate(state,ideas,trend_data)
         d["episode"]=int(state.get("episode",0))+1
         log(f"Neue Geschichte | Folge {d['episode']} | {d['title']}")
         video=make_video(d)
